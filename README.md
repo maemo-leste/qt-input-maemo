@@ -1,12 +1,11 @@
 # Maemo Qt5 Keyboard Plug-in
 
-Qt5 input plugin to handle Hildon events, incl. the virtual keyboard.
+Qt5 input module to handle Hildon events, incl. the virtual keyboard.
 
 - `plugin/` - The plugin
 - `example/` - Qt GUI test app 
 
-Produces `/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libhiminputcontextplugin.so` and 
-registers a QT input module under the key "him" for system-wide use.
+Produces `libhiminputcontextplugin.so` and registers the input module under the key "him" for system-wide use.
 
 ## Development
 
