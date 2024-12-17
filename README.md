@@ -10,8 +10,12 @@ Produces `libhiminputcontextplugin.so` and registers the input module under the 
 ## Development
 
 `example/` contains a simple Qt GUI with input boxes. It uses some CMake and Qt magic to load the 
-plugin from `build/qt/` in an isolated manner, allowing debugging (and ignore 
-the system-wide installed Qt input plugins).
+plugin from `build/qt/` in an isolated manner, allowing debugging (ignoring 
+the system-wide installed Qt input module).
 
-For example, `cmake -Bbuild -DBUILD_EXAMPLE=1 . && make -Cbuild -j4` will produce `build/bin/example` which  
-uses the input plugin at `build/qt/platforminputcontexts/libhildonplatforminputcontextplugin.so`  
+```bash
+cmake -Bbuild -DBUILD_EXAMPLE=1 . 
+make -Cbuild -j4
+``` 
+
+Produces `build/bin/example` which uses the input plugin at `build/qt/platforminputcontexts/libhildonplatforminputcontextplugin.so`  

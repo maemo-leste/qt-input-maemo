@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   qputenv("QT_IM_MODULE", QByteArray("him"));
 
 #ifdef DEBUG
-  qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
+  qputenv("QT_DEBUG_PLUGINS", QByteArray("0"));
 #endif
 
   qputenv("QT_STYLE_OVERRIDE", QByteArray("maemo5"));
