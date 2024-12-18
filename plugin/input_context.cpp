@@ -39,6 +39,7 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
   auto* event = static_cast<xcb_client_message_event_t *>(calloc(32, 1));
   if (event == nullptr) {
     qWarning("sendHildonCommand: could not allocate memory to send event");
+    free(event);
     return;
   }
 
@@ -56,6 +57,7 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
     msg->app_window = widget->window()->winId();
   } else if (cmd != HILDON_IM_HIDE) {
     qWarning() << "Invalid Hildon Command:" << cmd;
+    free(event);
     return;
   }
 
@@ -87,17 +89,16 @@ void QHildonInputContext::sendInputMode() {
 
   event->response_type = XCB_CLIENT_MESSAGE;
   event->format = HILDON_IM_INPUT_MODE_FORMAT;
-  event->window = hildon_im_window;
   event->type = QXcb::atom(QXcbHIMAtom::_HILDON_IM_INPUT_MODE);
+  event->window = hildon_im_window;
 
   auto *msg = reinterpret_cast<HildonIMInputModeMessage *>(&event->data.data8[0]);
 
-  // msg->input_mode = static_cast<HildonGtkInputMode>(inputMode);
-  msg->input_mode = HILDON_GTK_INPUT_MODE_FULL; // XXX: keep track of our current mode rather than defaulting to this ^^
+  msg->input_mode = static_cast<HildonGtkInputMode>(inputMode);
   msg->default_input_mode = HILDON_GTK_INPUT_MODE_FULL;
 
-  std::cerr << "Sending inputmode event!" << std::endl;
-  xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, (const char *) event);
+  std::cerr << "sendInputMode()" << std::endl;
+  xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, reinterpret_cast<const char *>(event));
   xcb_flush(QXcb::CONNECTION); // XXX: maybe remove
 
   free(event);
