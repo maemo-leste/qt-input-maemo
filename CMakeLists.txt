@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(qt5_platform_maemo)
 message(STATUS "Initiating compile using CMake ${CMAKE_VERSION}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/cmake")
 include(FindCcache)

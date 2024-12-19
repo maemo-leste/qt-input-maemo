@@ -1,6 +1,7 @@
 #include "utils-hildon.h"
 
 QMap<xcb_atom_t, QHildonIMAtom> HILDON_ATOM_MAP = {};
+QMap<unsigned int, QHildonIMCom> HILDON_COM_MAP = {};
 
 QStringList hildonAtomNames = {
   "HILDON_IM_WINDOW",
@@ -18,3 +19,57 @@ QStringList hildonAtomNames = {
   "HILDON_IM_PREEDIT_COMMITTED_CONTENT",
   "HILDON_IM_LONG_PRESS_SETTINGS",
 };
+
+QStringList hildonComNames = {
+  "HILDON_IM_CONTEXT_HANDLE_ENTER",
+  "HILDON_IM_CONTEXT_HANDLE_TAB",
+  "HILDON_IM_CONTEXT_HANDLE_BACKSPACE",
+  "HILDON_IM_CONTEXT_HANDLE_SPACE",
+  "HILDON_IM_CONTEXT_CONFIRM_SENTENCE_START",
+  "HILDON_IM_CONTEXT_FLUSH_PREEDIT",
+  "HILDON_IM_CONTEXT_CANCEL_PREEDIT",
+  "HILDON_IM_CONTEXT_BUFFERED_MODE",
+  "HILDON_IM_CONTEXT_DIRECT_MODE",
+  "HILDON_IM_CONTEXT_REDIRECT_MODE",
+  "HILDON_IM_CONTEXT_SURROUNDING_MODE",
+  "HILDON_IM_CONTEXT_PREEDIT_MODE",
+  "HILDON_IM_CONTEXT_CLIPBOARD_COPY",
+  "HILDON_IM_CONTEXT_CLIPBOARD_CUT",
+  "HILDON_IM_CONTEXT_CLIPBOARD_PASTE",
+  "HILDON_IM_CONTEXT_CLIPBOARD_SELECTION_QUERY",
+  "HILDON_IM_CONTEXT_REQUEST_SURROUNDING",
+  "HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL",
+  "HILDON_IM_CONTEXT_WIDGET_CHANGED",
+  "HILDON_IM_CONTEXT_OPTION_CHANGED",
+  "HILDON_IM_CONTEXT_ENTER_ON_FOCUS",
+  "HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT",
+  "HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT",
+  "HILDON_IM_CONTEXT_SHIFT_LOCKED",
+  "HILDON_IM_CONTEXT_SHIFT_UNLOCKED",
+  "HILDON_IM_CONTEXT_LEVEL_LOCKED",
+  "HILDON_IM_CONTEXT_LEVEL_UNLOCKED",
+  "HILDON_IM_CONTEXT_SHIFT_UNSTICKY",
+  "HILDON_IM_CONTEXT_LEVEL_UNSTICKY"
+};
+
+/*! XkbLookupKeySym ( X11->display, event->nativeScanCode(), HILDON_IM_SHIFT_STICKY_MASK, &mods_rtrn, sym_rtrn)
+ */
+static QString translateKeycodeAndState(KeyCode key, uint state, KeySym &keysym) {
+  uint mods;
+  KeySym *ks = &keysym;
+  if ( XkbLookupKeySym ( X11->display, key, state, &mods, ks) )
+    return QKeyMapperPrivate::maemo5TranslateKeySym(*ks);
+  else
+    return QString();
+}
+
+QString QKeyMapperPrivate::maemo5TranslateKeySym(KeySym keysym)
+{
+  uint xmodifiers = 0;
+  int code = 0;
+  Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+  QByteArray chars;
+  int count = 0;
+
+  return translateKeySym(keysym, xmodifiers, code, modifiers, chars, count);
+}

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <xcb/xcb.h>
+#include "xcbkeys.h"
 
 #include "utils-hildon.h"
 
@@ -25,6 +26,9 @@ namespace QXcb {
     qWarning() << "Could not resolve Hildon atom: " << hildon_enum;
     return {};
   }
-  void initialiseAtoms();
+  xcb_keysym_t keyCodeToKeySym(xcb_keycode_t keycode);
+  void initialiseHildonAtoms();
+  void initialiseHildonComEnums();
   xcb_window_t findHildonIm();
+  xcb_keysym_t XKeycodeToKeysym(int keycode);  // xcb version of this Xlib function
 }

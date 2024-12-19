@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+// this is mostly /usr/include/hildon-input-method/hildon-im-protocol.h
+
 #define HILDON_IM_CLIENT_MESSAGE_BUFFER_SIZE (20 - sizeof(int))
 
 typedef enum
@@ -52,14 +54,6 @@ typedef enum
 
 #include <QMap>
 #include <xcb/xcb.h>
-
-
-struct QHildonIMAtom {
-  QString key;
-  HildonIMAtom hildon_enum = static_cast<HildonIMAtom>(0);
-  xcb_atom_t xcb_atom = 0;
-};
-extern QMap<xcb_atom_t, QHildonIMAtom> HILDON_ATOM_MAP;
 
 typedef enum
 {
@@ -285,7 +279,22 @@ typedef struct
 #define HILDON_IM_PREEDIT_COMMITTED_CONTENT_FORMAT 8
 #define HILDON_IM_LONG_PRESS_SETTINGS_FORMAT 32
 
-// sigh
+// Qt5 port stuff
 #include <QStringList>
 #include <QMap>
 extern QStringList hildonAtomNames;
+extern QStringList hildonComNames;
+
+struct QHildonIMAtom {
+  QString name;
+  HildonIMAtom hildon_enum = static_cast<HildonIMAtom>(0);
+  xcb_atom_t xcb_atom = 0;
+};
+extern QMap<xcb_atom_t, QHildonIMAtom> HILDON_ATOM_MAP;
+
+struct QHildonIMCom {
+  QString name;
+  HildonIMCommunication value;
+};
+
+extern QMap<unsigned int, QHildonIMCom> HILDON_COM_MAP;

@@ -1,6 +1,8 @@
 #pragma once
 #include <QtCore>
 #include <QApplication>
+#include <QCoreApplication>
+
 #include <QInputMethodEvent>
 #include <QTextFormat>
 #include <QTextEdit>
@@ -11,6 +13,7 @@
 #include "event_filter.h"
 #include "utils-hildon.h"
 #include "utils-xcb.h"
+#include "qtkey.h"
 
 // #include "lib/xcb-maemo/qxcbintegration.h"
 // #include "lib/xcb-maemo/qxcbconnection.h"
@@ -50,9 +53,11 @@ private:
   void setMaskState(int *mask,
                            HildonIMInternalModifierMask lock_mask,
                            HildonIMInternalModifierMask sticky_mask,
-                           bool was_press_and_release);
+                           bool was_press_and_release) const;
   void updateInputMethodHints();
 
+  static void sendKey(QWidget *keywidget, int qtCode);
+  static bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
   static QGraphicsObject* qDeclarativeTextEdit_cast(QWidget *w);
 
 private:

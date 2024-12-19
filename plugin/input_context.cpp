@@ -18,129 +18,137 @@ QHildonInputContext::QHildonInputContext() {
     currentApp->installNativeEventFilter(m_eventFilter);
     is_gui = true;
   } else {
-    std::cerr << "No application!" << std::endl;
+    qWarning() << "No application!";
   }
 
-  // generate atoms lookup
-  QXcb::initialiseAtoms();
+  // generate lookups
+  QXcb::initialiseHildonAtoms();
+  QXcb::initialiseHildonComEnums();
+
+  sendKey(new QWidget(), Qt::Key_Enter);
 }
 
 bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) {
   QHildonIMAtom msg_atom = HILDON_ATOM_MAP[event->type];
   const auto message_format = event->format;
 
-  qDebug() << "HIM: parse" << HILDON_ATOM_MAP[event->type].key;
+  qDebug() << "HIM: parse" << HILDON_ATOM_MAP[event->type].name;
 
   if (msg_atom.hildon_enum == HILDON_IM_INSERT_UTF8 && message_format == HILDON_IM_INSERT_UTF8_FORMAT) {
     qDebug() << "HIM: parse( HILDON_IM_INSERT_UTF8_FORMAT )";
 
-    auto *msg = reinterpret_cast<HildonIMInsertUtf8Message *>(&event->data);
+    const auto *msg = reinterpret_cast<HildonIMInsertUtf8Message *>(&event->data);
     insertUtf8(msg->msg_flag, QString::fromUtf8(msg->utf8_str));
     return true;
   } else if (msg_atom.hildon_enum == HILDON_IM_COM) {
     auto *msg = reinterpret_cast<HildonIMComMessage *>(&event->data);
-    options = msg->options;
-
-    qHimDebug() << "HIM: x11FilterEvent( _HILDON_IM_COM /" << debugNameForCommunicationId(msg->type) << ")";
-
-    switch (msg->type) {
-      // Handle Keys msgs
-      case HILDON_IM_CONTEXT_HANDLE_ENTER:
-        sendKey(keywidget, Qt::Key_Enter);
-        return true;
-      case HILDON_IM_CONTEXT_HANDLE_TAB:
-        sendKey(keywidget, Qt::Key_Tab);
-        return true;
-      case HILDON_IM_CONTEXT_HANDLE_BACKSPACE:
-        sendKey(keywidget, Qt::Key_Backspace);
-        return true;
-      case HILDON_IM_CONTEXT_HANDLE_SPACE:
-        insertUtf8(HILDON_IM_MSG_CONTINUE, QChar(Qt::Key_Space));
-        commitm_preEditBuffer();
-        return true;
-
-      // Handle Clipboard msgs
-      case HILDON_IM_CONTEXT_CLIPBOARD_SELECTION_QUERY:
-        answerClipboardSelectionQuery(keywidget);
-        return true;
-      case HILDON_IM_CONTEXT_CLIPBOARD_PASTE:
-        if (QClipboard *clipboard = QApplication::clipboard()) {
-          QInputMethodEvent e;
-          e.setCommitString(clipboard->text());
-          QApplication::sendEvent(keywidget, &e);
-        }
-        return true;
-      case HILDON_IM_CONTEXT_CLIPBOARD_COPY:
-        if (QClipboard *clipboard = QApplication::clipboard())
-          clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
-        return true;
-      case HILDON_IM_CONTEXT_CLIPBOARD_CUT:
-        if (QClipboard *clipboard = QApplication::clipboard()) {
-          clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
-          QInputMethodEvent ev;
-          QApplication::sendEvent(keywidget, &ev);
-        }
-        return true;
-
-      // Handle commit mode msgs
-      case HILDON_IM_CONTEXT_DIRECT_MODE:
-        setCommitMode(HILDON_IM_COMMIT_DIRECT);
-        return true;
-      case HILDON_IM_CONTEXT_BUFFERED_MODE:
-        setCommitMode(HILDON_IM_COMMIT_BUFFERED);
-        return true;
-      case HILDON_IM_CONTEXT_REDIRECT_MODE:
-        setCommitMode(HILDON_IM_COMMIT_REDIRECT);
-        clearSelection();
-        return true;
-      case HILDON_IM_CONTEXT_SURROUNDING_MODE:
-        setCommitMode(HILDON_IM_COMMIT_SURROUNDING);
-        return true;
-      case HILDON_IM_CONTEXT_PREEDIT_MODE:
-        setCommitMode(HILDON_IM_COMMIT_PREEDIT);
-        return true;
-
-      // Handle context
-      case HILDON_IM_CONTEXT_CONFIRM_SENTENCE_START:
-        checkSentenceStart();
-        return true;
-      case HILDON_IM_CONTEXT_FLUSH_PREEDIT:
-        commitm_preEditBuffer();
-        return true;
-      case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
-        sendSurrounding(false);
-        return true;
-      case HILDON_IM_CONTEXT_LEVEL_UNSTICKY:
-        mask &= ~(HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK);
-        return true;
-      case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
-        mask &= ~(HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK);
-        return true;
-      case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
-        cancelPreedit();
-        return true;
-      case HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL:
-        sendSurrounding(true);
-        return true;
-      case HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT:
-      case HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT:
-        spaceAfterCommit = (msg->type == HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT);
-        return true;
-
-      case HILDON_IM_CONTEXT_WIDGET_CHANGED:
-      case HILDON_IM_CONTEXT_ENTER_ON_FOCUS:
-      case HILDON_IM_CONTEXT_SHIFT_LOCKED:
-      case HILDON_IM_CONTEXT_SHIFT_UNLOCKED:
-      case HILDON_IM_CONTEXT_LEVEL_LOCKED:
-      case HILDON_IM_CONTEXT_LEVEL_UNLOCKED:
-        // ignore
-        return true;
-
-      default:
-        qWarning() << "HIM: x11FilterEvent( _HILDON_IM_COM /" << debugNameForCommunicationId(msg->type)
-                   << ") was not handled.";
-        break;
+    if (!HILDON_COM_MAP.contains(msg->type)) {
+      qWarning() << QString("HIM: parse( _HILDON_IM_COM / unknown type %1, skipping)").arg(msg->type);
+      return false;
     }
+
+    auto com = HILDON_COM_MAP[msg->type];
+
+    // eww
+    m_options = msg->options;
+
+    qDebug() << "HIM: parse( _HILDON_IM_COM /" << com.name << ")";
+
+  switch (msg->type) {
+    // Handle Keys msgs
+    case HILDON_IM_CONTEXT_HANDLE_ENTER:
+      sendKey(keywidget, Qt::Key_Enter);
+      return true;
+    case HILDON_IM_CONTEXT_HANDLE_TAB:
+      sendKey(keywidget, Qt::Key_Tab);
+      return true;
+    case HILDON_IM_CONTEXT_HANDLE_BACKSPACE:
+      sendKey(keywidget, Qt::Key_Backspace);
+      return true;
+    case HILDON_IM_CONTEXT_HANDLE_SPACE:
+      insertUtf8(HILDON_IM_MSG_CONTINUE, QChar(Qt::Key_Space));
+      commitm_preEditBuffer();
+      return true;
+
+    // Handle Clipboard msgs
+    case HILDON_IM_CONTEXT_CLIPBOARD_SELECTION_QUERY:
+      answerClipboardSelectionQuery(keywidget);
+      return true;
+    case HILDON_IM_CONTEXT_CLIPBOARD_PASTE:
+      if (QClipboard *clipboard = QApplication::clipboard()) {
+        QInputMethodEvent e;
+        e.setCommitString(clipboard->text());
+        QApplication::sendEvent(keywidget, &e);
+      }
+      return true;
+    case HILDON_IM_CONTEXT_CLIPBOARD_COPY:
+      if (QClipboard *clipboard = QApplication::clipboard())
+        clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
+      return true;
+    case HILDON_IM_CONTEXT_CLIPBOARD_CUT:
+      if (QClipboard *clipboard = QApplication::clipboard()) {
+        clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
+        QInputMethodEvent ev;
+        QApplication::sendEvent(keywidget, &ev);
+      }
+      return true;
+
+    // Handle commit mode msgs
+    case HILDON_IM_CONTEXT_DIRECT_MODE:
+      setCommitMode(HILDON_IM_COMMIT_DIRECT);
+      return true;
+    case HILDON_IM_CONTEXT_BUFFERED_MODE:
+      setCommitMode(HILDON_IM_COMMIT_BUFFERED);
+      return true;
+    case HILDON_IM_CONTEXT_REDIRECT_MODE:
+      setCommitMode(HILDON_IM_COMMIT_REDIRECT);
+      clearSelection();
+      return true;
+    case HILDON_IM_CONTEXT_SURROUNDING_MODE:
+      setCommitMode(HILDON_IM_COMMIT_SURROUNDING);
+      return true;
+    case HILDON_IM_CONTEXT_PREEDIT_MODE:
+      setCommitMode(HILDON_IM_COMMIT_PREEDIT);
+      return true;
+
+    // Handle context
+    case HILDON_IM_CONTEXT_CONFIRM_SENTENCE_START:
+      checkSentenceStart();
+      return true;
+    case HILDON_IM_CONTEXT_FLUSH_PREEDIT:
+      commitm_preEditBuffer();
+      return true;
+    case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
+      sendSurrounding(false);
+      return true;
+    case HILDON_IM_CONTEXT_LEVEL_UNSTICKY:
+      m_mask &= ~(HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK);
+      return true;
+    case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
+      m_mask &= ~(HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK);
+      return true;
+    case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
+      cancelPreedit();
+      return true;
+    case HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL:
+      sendSurrounding(true);
+      return true;
+    case HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT:
+    case HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT:
+      m_spaceAfterCommit = (msg->type == HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT);
+      return true;
+
+    case HILDON_IM_CONTEXT_WIDGET_CHANGED:
+    case HILDON_IM_CONTEXT_ENTER_ON_FOCUS:
+    case HILDON_IM_CONTEXT_SHIFT_LOCKED:
+    case HILDON_IM_CONTEXT_SHIFT_UNLOCKED:
+    case HILDON_IM_CONTEXT_LEVEL_LOCKED:
+    case HILDON_IM_CONTEXT_LEVEL_UNLOCKED:
+      // ignore
+      return true;
+    default:
+      break;
+  }
   }
 
   return false;
@@ -299,7 +307,7 @@ void QHildonInputContext::updateInputMethodHints() {
     m_inputMode = HILDON_GTK_INPUT_MODE_FULL;
   }
 
-  bool isAutoCapable = (hints & (Qt::ImhExclusiveInputMask | Qt::ImhNom_autoUppercase)) == 0;
+  bool isAutoCapable = (hints & (Qt::ImhExclusiveInputMask | Qt::ImhNoAutoUppercase)) == 0;
   bool isPredictive = (hints & (Qt::ImhDigitsOnly | Qt::ImhFormattedNumbersOnly | Qt::ImhUppercaseOnly |
                                 Qt::ImhLowercaseOnly | Qt::ImhDialableCharactersOnly | Qt::ImhNoPredictiveText)) == 0;
 
@@ -400,29 +408,27 @@ void QHildonInputContext::sendSurrounding(bool sendAllContents) {
   if (surrounding.isEmpty())
     cpos = 0;
 
-  auto *event = QXcb::createMessageEvent();
-  if (!event) {
-    free(event);
-    return;
-  }
-
-  event->response_type = XCB_CLIENT_MESSAGE;
-  event->sequence = 0;
-
-  auto *msg = reinterpret_cast<HildonIMSurroundingContentMessage *>(&event->data.data8[0]);
-
   // Split surrounding context into parts that are small enough to send in a X11 message
-  QByteArray ba = surrounding.toUtf8();
+  const QByteArray ba = surrounding.toUtf8();
   bool firstPart = true;
   int offset = 0;
 
   while (firstPart || (offset < ba.size())) {
-    // this call will take care of adding the trailing '\0' for surrounding string
-    event->format = HILDON_IM_SURROUNDING_CONTENT_FORMAT;
-    event->type = QXcb::hildon_atom(HILDON_IM_SURROUNDING_CONTENT).xcb_atom;
+    auto *event = QXcb::createMessageEvent();
+    if (!event) {
+      return;
+    }
 
-    int len = qMin(ba.size() - offset, static_cast<int>(HILDON_IM_CLIENT_MESSAGE_BUFFER_SIZE) - 1);
-    ::memcpy(msg->surrounding, ba.constData() + offset, len);
+    event->response_type = XCB_CLIENT_MESSAGE;
+    event->sequence = 0;
+
+    auto *msg = reinterpret_cast<HildonIMSurroundingContentMessage *>(&event->data.data8[0]);
+    // this call will take care of adding the trailing '\0' for surrounding string
+    event->type = QXcb::hildon_atom(HILDON_IM_SURROUNDING_CONTENT).xcb_atom;
+    event->format = HILDON_IM_SURROUNDING_CONTENT_FORMAT;
+
+    const int len = qMin(ba.size() - offset, static_cast<int>(HILDON_IM_CLIENT_MESSAGE_BUFFER_SIZE) - 1);
+    memcpy(msg->surrounding, ba.constData() + offset, len);
     offset += len;
 
     if (firstPart)
@@ -432,28 +438,32 @@ void QHildonInputContext::sendSurrounding(bool sendAllContents) {
     else
       msg->msg_flag = HILDON_IM_MSG_CONTINUE;
 
-    // send
     xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, reinterpret_cast<const char *>(event));
     xcb_flush(QXcb::CONNECTION);
     free(event);
     firstPart = false;
   }
 
-  event = QXcb::createMessageEvent();
+  auto *event = QXcb::createMessageEvent();
   if (!event) {
     free(event);
     return;
   }
 
-  // Send the cursor offset in the surrounding
-  memset(&xev, 0, sizeof(XEvent));
-  xev.xclient.message_type = ATOM(_HILDON_IM_SURROUNDING);
-  xev.xclient.format = HILDON_IM_SURROUNDING_FORMAT;
+  event->response_type = XCB_CLIENT_MESSAGE;
+  event->sequence = 0;
 
-  HildonIMSurroundingMessage *surroundingMsg = reinterpret_cast<HildonIMSurroundingMessage *>(&xev.xclient.data);
-  surroundingMsg->commit_mode = commitMode;
-  surroundingMsg->cursor_offset = cpos;
-  sendX11Event(&xev);
+  // Send the cursor offset in the surrounding
+  event->type = QXcb::hildon_atom(HILDON_IM_SURROUNDING).xcb_atom;
+  event->format = HILDON_IM_SURROUNDING_FORMAT;
+
+  auto* msg_cursor = reinterpret_cast<HildonIMSurroundingMessage *>(&event->data.data8[0]);
+  msg_cursor->commit_mode = m_commitMode;
+  msg_cursor->cursor_offset = cpos;
+
+  xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, reinterpret_cast<const char *>(event));
+  xcb_flush(QXcb::CONNECTION);
+  free(event);
 }
 
 // void QHildonInputContext::showSoftKeyboard() {
@@ -542,7 +552,9 @@ void QHildonInputContext::checkSentenceStart() {
       sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
     }
     return;
-  } else if (m_inputMode & HILDON_GTK_INPUT_MODE_INVISIBLE) {
+  }
+
+  if (m_inputMode & HILDON_GTK_INPUT_MODE_INVISIBLE) {
     // no autocap for passwords
     m_autoUpper = false;
     sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
@@ -550,10 +562,10 @@ void QHildonInputContext::checkSentenceStart() {
 
   int cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
   QString analyze;
-  const int analyzeCount = 10;
 
   // Improve performance: only analyze 10 chars before the cursor
   if (cpos) {
+    constexpr int analyzeCount = 10;
     analyze = w->inputMethodQuery(Qt::ImSurroundingText)
                   .toString()
                   .mid(qMax(cpos - analyzeCount, 0), qMin(cpos, analyzeCount));
@@ -582,7 +594,8 @@ void QHildonInputContext::checkSentenceStart() {
 }
 
 void QHildonInputContext::setMaskState(int *mask, HildonIMInternalModifierMask lock_mask,
-                                       HildonIMInternalModifierMask sticky_mask, bool was_press_and_release) {
+                                       const HildonIMInternalModifierMask sticky_mask,
+                                       const bool was_press_and_release) const {
   // LOGMESSAGE3("setMaskState", lock_mask, sticky_mask)
   // LOGMESSAGE3(" - ", "mask=", *mask)
 
@@ -626,7 +639,54 @@ void QHildonInputContext::setMaskState(int *mask, HildonIMInternalModifierMask l
   }
 }
 
-QGraphicsObject *QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {
+#include "xcb/xcb.h"
+/*! Sends the key as a spontaneous event.
+ */
+void QHildonInputContext::sendKey(QWidget *keywidget, int qtCode) {
+  const QPointer guard = keywidget;
+
+  xcb_keysym_t keysym = XCB_NO_SYMBOL;
+  int keycode;
+
+  switch (qtCode) {
+    case Qt::Key_Enter:
+      keycode = 36;
+      break;
+    case Qt::Key_Tab:
+      keycode = 66;
+      break;
+    case Qt::Key_Backspace:
+      keycode = 22;
+      break;
+    case Qt::Key_Left:
+      keycode = 116;
+      break;
+    case Qt::Key_Right:
+      keycode = 114;
+      break;
+    default:
+      qDebug("HIM: sendKey() keycode %d not allowed", qtCode);
+      return;
+  }
+
+  keysym = QXcb::XKeycodeToKeysym(keycode);
+
+  QKeyEvent click(QEvent::KeyPress, qtCode, Qt::NoModifier, keycode, keysym, 0, QString(), false, 1);
+  qt_sendSpontaneousEvent(keywidget, &click);
+
+  // in case the widget was destroyed when the key went down
+  if (guard.isNull())
+    return;
+
+  QKeyEvent release(QEvent::KeyRelease, qtCode, Qt::NoModifier, keycode, keysym, 0, QString(), false, 1);
+  qt_sendSpontaneousEvent(keywidget, &click);
+}
+
+bool QHildonInputContext::qt_sendSpontaneousEvent(QObject *receiver, QEvent *event) {
+  return QCoreApplication::sendEvent(receiver, event);
+}
+
+QGraphicsObject* QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {
   if (const auto *view = qobject_cast<QGraphicsView *>(w)) {
     if (auto *item = qgraphicsitem_cast<QGraphicsObject *>(view->scene()->focusItem())) {
       if (item->inherits("QDeclarativeTextEdit"))
