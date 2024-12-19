@@ -18,4 +18,4 @@ cmake -Bbuild -DBUILD_EXAMPLE=1 .
 make -Cbuild -j4
 ``` 
 
-Produces `build/bin/example` which uses the input plugin at `build/qt/platforminputcontexts/libhildonplatforminputcontextplugin.so`  
+Produces `build/bin/example` which uses the input module from the CMake build directory.  

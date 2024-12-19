@@ -6,18 +6,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
   ui->setupUi(this);
-
+  // ui->line->setInputMethodHints(Qt::ImhDigitsOnly);
   this->show();
-
-  // plugin = new QHildonInputContext();
-  // QWidget *parentWidget = ui->line->parentWidget();
-  // plugin->setFocusObject(parentWidget);
-
-  // connect(ui->btn, &QPushButton::clicked, [this]{
-  //   QWidget *w = ui->line->parentWidget();
-  //   ui->line->setFocus();
-  //   // plugin->lol(w);
-  // });
 }
 
 void MainWindow::onQuitApplication() {

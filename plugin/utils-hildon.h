@@ -50,6 +50,17 @@ typedef enum
   HILDON_IM_NUM_ATOMS
 } HildonIMAtom;
 
+#include <QMap>
+#include <xcb/xcb.h>
+
+
+struct QHildonIMAtom {
+  QString key;
+  HildonIMAtom hildon_enum = static_cast<HildonIMAtom>(0);
+  xcb_atom_t xcb_atom = 0;
+};
+extern QMap<xcb_atom_t, QHildonIMAtom> HILDON_ATOM_MAP;
+
 typedef enum
 {
   HILDON_IM_CONTEXT_HANDLE_ENTER,
@@ -274,26 +285,7 @@ typedef struct
 #define HILDON_IM_PREEDIT_COMMITTED_CONTENT_FORMAT 8
 #define HILDON_IM_LONG_PRESS_SETTINGS_FORMAT 32
 
-static const char * xcb_atomnames = {
-  "_HILDON_IM_WINDOW\0"                    // find the global im window
-  "_HILDON_IM_ACTIVATE\0"                  // activate the input method
-  "_HILDON_IM_SURROUNDING\0"               // send surrounding
-  "_HILDON_IM_SURROUNDING_CONTENT\0"       // send surrounding header
-  "_HILDON_IM_KEY_EVENT\0"                 // send key event to im
-  "_HILDON_IM_INSERT_UTF8\0"               // input method wants to insert data
-  "_HILDON_IM_COM\0"                       // input method wants to communicate with us
-  "_HILDON_IM_CLIPBOARD_COPIED\0"          //### NOT USED YET
-  "_HILDON_IM_CLIPBOARD_SELECTION_QUERY\0" //### NOT USED YET
-  "_HILDON_IM_CLIPBOARD_SELECTION_REPLY\0" // tell im whether we have a selection or not
-  "_HILDON_IM_INPUT_MODE\0"
-  "_HILDON_IM_PREEDIT_COMMITTED\0"
-  "_HILDON_IM_PREEDIT_COMMITTED_CONTENT\0"
-  "_HILDON_IM_LONG_PRESS_SETTINGS\0"
-};
-
 // sigh
 #include <QStringList>
 #include <QMap>
-extern QStringList qxcbAtomNames;
-QString getAtomName(HildonIMAtom atom);
-int getAtomID_bykey(const QString &key);
+extern QStringList hildonAtomNames;

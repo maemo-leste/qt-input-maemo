@@ -1,37 +1,24 @@
 #pragma once
-#include <QObject>
 #include <QDebug>
+#include <QObject>
 #include <QX11Info>
+
 #include <iostream>
+#include <algorithm>
 #include <xcb/xcb.h>
 
-namespace QXcbHIMAtom {
-  enum Atom {
-    _HILDON_IM_WINDOW,
-    _HILDON_IM_ACTIVATE,
-    _HILDON_IM_SURROUNDING,
-    _HILDON_IM_SURROUNDING_CONTENT,
-    _HILDON_IM_KEY_EVENT,
-    _HILDON_IM_INSERT_UTF8,
-    _HILDON_IM_COM,
-    _HILDON_IM_CLIPBOARD_COPIED,
-    _HILDON_IM_CLIPBOARD_SELECTION_QUERY,
-    _HILDON_IM_CLIPBOARD_SELECTION_REPLY,
-    _HILDON_IM_INPUT_MODE,
-    _HILDON_IM_PREEDIT_COMMITTED,
-    _HILDON_IM_PREEDIT_COMMITTED_CONTENT,
-    _HILDON_IM_LONG_PRESS_SETTINGS,
-    NAtoms,
-  };
-}
-
+#include "utils-hildon.h"
 
 namespace QXcb {
-  extern xcb_connection_t* CONNECTION;
   extern xcb_atom_t ATOMS[];
-  inline xcb_atom_t atom(const QXcbHIMAtom::Atom atom) { return ATOMS[atom]; }
+
+  extern xcb_connection_t* CONNECTION;
+  inline QHildonIMAtom atom(const HildonIMAtom hildon_enum) {
+    for (QMap<xcb_atom_t, QHildonIMAtom>::iterator it = HILDON_ATOM_MAP.begin(); it != HILDON_ATOM_MAP.end(); ++it)
+      if (it.value().hildon_enum == hildon_enum) return it.value();
+    qWarning() << "Could not resolve Hildon atom: " << hildon_enum;
+    return {};
+  }
   void initialiseAtoms();
-
   xcb_window_t findHildonIm();
-
 }

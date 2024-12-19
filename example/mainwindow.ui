@@ -64,9 +64,6 @@
     </rect>
    </property>
    <widget class="QMenu" name="menuw00t">
-    <property name="title">
-     <string>w00t</string>
-    </property>
     <addaction name="actionAbout"/>
     <addaction name="actionExit"/>
    </widget>

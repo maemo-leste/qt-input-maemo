@@ -15,9 +15,14 @@ class MyXcbEventFilter;
 class QHildonInputContext : public QPlatformInputContext {
 public:
   QHildonInputContext();
-  static void show_vkb(const QWidget *w);
-  static void sendHildonCommand(HildonIMCommand cmd, const QWidget *widget = nullptr);
-  static void sendInputMode();
+  void sendHildonCommand(HildonIMCommand cmd, const QWidget *widget = nullptr) const;
+  bool parseHildonCommand(xcb_client_message_event_t *event);
+  void sendInputMode() const;
+  void updateInputMethodHints();
+  void showSoftKeyboard();
+  // bool filterEvent(const QEvent *event) override;
+  void showInputPanel() override;
+  void hideInputPanel() override;
   ~QHildonInputContext() override;
 
   bool is_gui = false;
@@ -28,4 +33,7 @@ public:
 
 private:
   QHildonEventFilter *m_eventFilter;
+  int m_inputMode = 0;
+  HildonIMTrigger m_triggerMode = HILDON_IM_TRIGGER_KEYBOARD;
+  QWidget* m_currentFocus = nullptr;
 };
