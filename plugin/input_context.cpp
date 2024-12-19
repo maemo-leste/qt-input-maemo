@@ -56,7 +56,7 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
         return true;
       case HILDON_IM_CONTEXT_HANDLE_SPACE:
         insertUtf8(HILDON_IM_MSG_CONTINUE, QChar(Qt::Key_Space));
-        commitPreeditBuffer();
+        commitm_preEditBuffer();
         return true;
 
       // Handle Clipboard msgs
@@ -105,7 +105,7 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
         checkSentenceStart();
         return true;
       case HILDON_IM_CONTEXT_FLUSH_PREEDIT:
-        commitPreeditBuffer();
+        commitm_preEditBuffer();
         return true;
       case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
         sendSurrounding(false);
@@ -146,6 +146,8 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
   return false;
 }
 
+QWidget *QHildonInputContext::focusWidget() { return m_currentFocus; }
+
 void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWidget *widget) const {
   qDebug() << "sendHildonCommand" << cmd;
   xcb_window_t hildon_im_window = QXcb::findHildonIm();
@@ -156,9 +158,8 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
 
   // std::cerr << "sendHildonCommand window:" << hildon_im_window << std::endl;
 
-  auto *event = static_cast<xcb_client_message_event_t *>(calloc(32, 1));
+  auto *event = QXcb::createMessageEvent();
   if (!event) {
-    qWarning() << "sendHildonCommand: could not allocate memory to send event";
     free(event);
     return;
   }
@@ -167,7 +168,7 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
   event->format = HILDON_IM_ACTIVATE_FORMAT;
   event->sequence = 0; // XXX: required? we already do calloc
   event->window = hildon_im_window;
-  event->type = QXcb::atom(HILDON_IM_ACTIVATE).xcb_atom;
+  event->type = QXcb::hildon_atom(HILDON_IM_ACTIVATE).xcb_atom;
   auto *msg = reinterpret_cast<HildonIMActivateMessage *>(&event->data.data8[0]);
 
   if (widget) {
@@ -191,6 +192,65 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
   free(event);
 }
 
+/*! \internal
+Ask the client widget to insert the specified text at the cursor
+ *  position, by triggering the commit signal on the context
+ */
+void QHildonInputContext::insertUtf8(int flag, const QString &text) {
+  qDebug() << "HIM: insertUtf8(" << flag << ", " << text << ")";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  QString cleanText = text;
+  if (m_mask & HILDON_IM_SHIFT_LOCK_MASK)
+    cleanText = cleanText.toUpper();
+
+  m_lastInternalChange = true;
+
+  // TODO HILDON_IM_AUTOCORRECT is used by the handwriting plugin
+  // Writing CiAo in the plugin add Ciao in the widget.
+  if (m_options & HILDON_IM_AUTOCORRECT) {
+    qWarning() << "HILDON_IM_AUTOCORRECT Not Implemented Yet";
+  }
+
+  // Delete suroundings when we are using the m_preEditBuffer.
+  //  Eg: For the HandWriting plugin
+  if (!m_preEditBuffer.isNull()) {
+    // Updates m_preEditBuffer
+    if (flag != HILDON_IM_MSG_START) {
+      m_preEditBuffer.append(cleanText);
+      cleanText = m_preEditBuffer;
+    }
+  }
+
+  if (m_commitMode == HILDON_IM_COMMIT_PREEDIT) {
+    if (m_preEditBuffer.isNull())
+      m_preEditBuffer = cleanText;
+
+    // Creating attribute list
+    QList<QInputMethodEvent::Attribute> attributes;
+    QTextCharFormat textCharFormat;
+    textCharFormat.setFontUnderline(true);
+    textCharFormat.setBackground(w->palette().highlight());
+    textCharFormat.setForeground(w->palette().base());
+    attributes << QInputMethodEvent::Attribute(QInputMethodEvent::TextFormat, 0, cleanText.length(), textCharFormat);
+    attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Cursor, 0, 1, QVariant());
+
+    QInputMethodEvent e(cleanText, attributes);
+    QApplication::sendEvent(w, &e);
+
+    // Reset commit mode
+    if (flag == HILDON_IM_MSG_END)
+      setCommitMode(m_lastCommitMode, false);
+  } else { // commitMode != HILDON_IM_COMMIT_PREEDIT
+    QInputMethodEvent e;
+    e.setCommitString(cleanText);
+    QApplication::sendEvent(w, &e);
+  }
+}
+
 void QHildonInputContext::sendInputMode() const {
   xcb_window_t hildon_im_window = QXcb::findHildonIm();
 
@@ -202,7 +262,7 @@ void QHildonInputContext::sendInputMode() const {
 
   event->response_type = XCB_CLIENT_MESSAGE;
   event->format = HILDON_IM_INPUT_MODE_FORMAT;
-  event->type = QXcb::atom(HILDON_IM_INPUT_MODE).xcb_atom;
+  event->type = QXcb::hildon_atom(HILDON_IM_INPUT_MODE).xcb_atom;
   event->window = hildon_im_window;
 
   auto *msg = reinterpret_cast<HildonIMInputModeMessage *>(&event->data.data8[0]);
@@ -239,7 +299,7 @@ void QHildonInputContext::updateInputMethodHints() {
     m_inputMode = HILDON_GTK_INPUT_MODE_FULL;
   }
 
-  bool isAutoCapable = (hints & (Qt::ImhExclusiveInputMask | Qt::ImhNoAutoUppercase)) == 0;
+  bool isAutoCapable = (hints & (Qt::ImhExclusiveInputMask | Qt::ImhNom_autoUppercase)) == 0;
   bool isPredictive = (hints & (Qt::ImhDigitsOnly | Qt::ImhFormattedNumbersOnly | Qt::ImhUppercaseOnly |
                                 Qt::ImhLowercaseOnly | Qt::ImhDialableCharactersOnly | Qt::ImhNoPredictiveText)) == 0;
 
@@ -301,21 +361,117 @@ void QHildonInputContext::setFocusObject(QObject *object) {
   show_again = false;
 }
 
-void QHildonInputContext::showSoftKeyboard() {
-  // Hacky fix for the misbehaving QGraphicsProxyWidget:
-  // we do not get any notification if the input focus changes to another
-  // widget inside a single QGraphicsProxyWidget
-  // @TODO: actually fix
-  // QWidget *newFocus = resolveFocusWidget(QInputContext::focusWidget());
-  // if (realFocus && (newFocus != realFocus)) {
-  //   cancelPreedit();
-  //   longPressKeyEvent.reset(0);
-  //   longPressTimer->stop();
-  //   realFocus = newFocus;
-  //   updateInputMethodHints();
-  // }
-  // sendHildonCommand(HILDON_IM_SETNSHOW, QInputContext::focusWidget());
+void QHildonInputContext::sendSurrounding(bool sendAllContents) {
+  QWidget *w = focusWidget();
+  if (!w) {
+    qWarning() << "sendSurrounding: bad widget";
+    return;
+  }
+
+  xcb_window_t hildon_im_window = QXcb::findHildonIm();
+  if (!hildon_im_window) {
+    qWarning() << "sendSurrounding: could not find hildon_im_window";
+    return;
+  }
+
+  QString surrounding;
+  int cpos;
+  if (sendAllContents) {
+    // Qt::ImSurrounding only returns the current block
+
+    if (const auto te = qobject_cast<QTextEdit *>(w)) {
+      surrounding = te->toPlainText();
+      cpos = te->textCursor().position();
+    } else if (const auto *pte = qobject_cast<QPlainTextEdit *>(w)) {
+      surrounding = pte->toPlainText();
+      cpos = pte->textCursor().position();
+    } else if (const QGraphicsObject *declarativeTextEdit = qDeclarativeTextEdit_cast(w)) {
+      surrounding = declarativeTextEdit->property("text").toString();
+      cpos = declarativeTextEdit->property("cursorPosition").toInt();
+    } else {
+      surrounding = w->inputMethodQuery(Qt::ImSurroundingText).toString();
+      cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+    }
+  } else {
+    surrounding = w->inputMethodQuery(Qt::ImSurroundingText).toString();
+    cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+  }
+
+  if (surrounding.isEmpty())
+    cpos = 0;
+
+  auto *event = QXcb::createMessageEvent();
+  if (!event) {
+    free(event);
+    return;
+  }
+
+  event->response_type = XCB_CLIENT_MESSAGE;
+  event->sequence = 0;
+
+  auto *msg = reinterpret_cast<HildonIMSurroundingContentMessage *>(&event->data.data8[0]);
+
+  // Split surrounding context into parts that are small enough to send in a X11 message
+  QByteArray ba = surrounding.toUtf8();
+  bool firstPart = true;
+  int offset = 0;
+
+  while (firstPart || (offset < ba.size())) {
+    // this call will take care of adding the trailing '\0' for surrounding string
+    event->format = HILDON_IM_SURROUNDING_CONTENT_FORMAT;
+    event->type = QXcb::hildon_atom(HILDON_IM_SURROUNDING_CONTENT).xcb_atom;
+
+    int len = qMin(ba.size() - offset, static_cast<int>(HILDON_IM_CLIENT_MESSAGE_BUFFER_SIZE) - 1);
+    ::memcpy(msg->surrounding, ba.constData() + offset, len);
+    offset += len;
+
+    if (firstPart)
+      msg->msg_flag = HILDON_IM_MSG_START;
+    else if (offset == ba.size())
+      msg->msg_flag = HILDON_IM_MSG_END;
+    else
+      msg->msg_flag = HILDON_IM_MSG_CONTINUE;
+
+    // send
+    xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, reinterpret_cast<const char *>(event));
+    xcb_flush(QXcb::CONNECTION);
+    free(event);
+    firstPart = false;
+  }
+
+  event = QXcb::createMessageEvent();
+  if (!event) {
+    free(event);
+    return;
+  }
+
+  // Send the cursor offset in the surrounding
+  memset(&xev, 0, sizeof(XEvent));
+  xev.xclient.message_type = ATOM(_HILDON_IM_SURROUNDING);
+  xev.xclient.format = HILDON_IM_SURROUNDING_FORMAT;
+
+  HildonIMSurroundingMessage *surroundingMsg = reinterpret_cast<HildonIMSurroundingMessage *>(&xev.xclient.data);
+  surroundingMsg->commit_mode = commitMode;
+  surroundingMsg->cursor_offset = cpos;
+  sendX11Event(&xev);
 }
+
+// void QHildonInputContext::showSoftKeyboard() {
+//   // Hacky fix for the misbehaving QGraphicsProxyWidget:
+//   // we do not get any notification if the input focus changes to another
+//   // widget inside a single QGraphicsProxyWidget
+//   // @TODO: actually fix
+//   // QWidget *newFocus = resolveFocusWidget(QInputContext::focusWidget());
+//   // if (realFocus && (newFocus != realFocus)) {
+//   //   cancelPreedit();
+//   //   longPressKeyEvent.reset(0);
+//   //   longPressTimer->stop();
+//   //   realFocus = newFocus;
+//   //   updateInputMethodHints();
+//   // }
+//   // sendHildonCommand(HILDON_IM_SETNSHOW, QInputContext::focusWidget());
+// }
+
 void QHildonInputContext::showInputPanel() {
   if (!m_currentFocus)
     return;
@@ -333,3 +489,149 @@ void QHildonInputContext::hideInputPanel() {
 }
 
 QHildonInputContext::~QHildonInputContext() { sendHildonCommand(HILDON_IM_HIDE); }
+
+void QHildonInputContext::setCommitMode(HildonIMCommitMode mode, bool clearPreEdit) {
+  if (m_commitMode != mode) {
+    if (clearPreEdit)
+      m_preEditBuffer.clear();
+    m_lastCommitMode = m_commitMode;
+  }
+
+  m_commitMode = mode;
+}
+
+void QHildonInputContext::commitPreeditBuffer() {
+  qDebug() << "HIM: commitPreeditBuffer()";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  QInputMethodEvent e;
+
+  if (m_spaceAfterCommit)
+    e.setCommitString(m_preEditBuffer + QLatin1Char(' '));
+  else
+    e.setCommitString(m_preEditBuffer);
+
+  QApplication::sendEvent(w, &e);
+  m_preEditBuffer.clear();
+}
+
+// CONTEXT
+/*! \internal
+Updates the IM with the autocap state at the active cursor position
+ */
+void QHildonInputContext::checkSentenceStart() {
+  qDebug() << "HIM: checkSentenceStart()";
+
+  if (!(m_options & HILDON_IM_AUTOCASE))
+    return;
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  if ((m_inputMode & (HILDON_GTK_INPUT_MODE_ALPHA | HILDON_GTK_INPUT_MODE_AUTOCAP)) !=
+      (HILDON_GTK_INPUT_MODE_ALPHA | HILDON_GTK_INPUT_MODE_AUTOCAP)) {
+    // If autocap is off, but the mode contains alpha, send autocap message.
+    // The important part is that when entering a numerical entry the autocap
+    // is not defined, and the plugin sets the mode appropriate for the language */
+    if (m_inputMode & HILDON_GTK_INPUT_MODE_ALPHA) {
+      m_autoUpper = false;
+      sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
+    }
+    return;
+  } else if (m_inputMode & HILDON_GTK_INPUT_MODE_INVISIBLE) {
+    // no autocap for passwords
+    m_autoUpper = false;
+    sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
+  }
+
+  int cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+  QString analyze;
+  const int analyzeCount = 10;
+
+  // Improve performance: only analyze 10 chars before the cursor
+  if (cpos) {
+    analyze = w->inputMethodQuery(Qt::ImSurroundingText)
+                  .toString()
+                  .mid(qMax(cpos - analyzeCount, 0), qMin(cpos, analyzeCount));
+  }
+
+  int spaces = 0;
+
+  while (spaces < analyze.length()) {
+    if (analyze.at(analyze.length() - spaces - 1).isSpace())
+      spaces++;
+    else
+      break;
+  }
+
+  // not very nice, but QTextBoundaryFinder doesn't really work here
+  static const QString punctuation = QLatin1String(".!?\xa1\xbf"); // spanish inverted ! and ?
+
+  if (!cpos || analyze.length() == spaces ||
+      (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1)))) {
+    m_autoUpper = true;
+    sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
+  } else {
+    m_autoUpper = false;
+    sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
+  }
+}
+
+void QHildonInputContext::setMaskState(int *mask, HildonIMInternalModifierMask lock_mask,
+                                       HildonIMInternalModifierMask sticky_mask, bool was_press_and_release) {
+  // LOGMESSAGE3("setMaskState", lock_mask, sticky_mask)
+  // LOGMESSAGE3(" - ", "mask=", *mask)
+
+  /* Locking Fn is disabled in TELE and NUMERIC */
+  if (!(m_inputMode & HILDON_GTK_INPUT_MODE_ALPHA) && !(m_inputMode & HILDON_GTK_INPUT_MODE_HEXA) &&
+      ((m_inputMode & HILDON_GTK_INPUT_MODE_TELE) || (m_inputMode & HILDON_GTK_INPUT_MODE_NUMERIC))) {
+    if (*mask & lock_mask) {
+      /* already locked, remove lock and set it to sticky */
+      *mask &= ~(lock_mask | sticky_mask);
+      *mask |= sticky_mask;
+    } else if (*mask & sticky_mask) {
+      /* the key is already sticky, it's fine */
+    } else if (was_press_and_release) {
+      /* Pressing the key for the first time stickies the key for one character,
+       * but only if no characters were entered while holding the key down */
+      *mask |= sticky_mask;
+    }
+    return;
+  }
+
+  if (*mask & lock_mask) {
+    /* Pressing the key while already locked clears the state */
+    if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
+      sendHildonCommand(HILDON_IM_SHIFT_UNLOCKED, m_currentFocus);
+    else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
+      sendHildonCommand(HILDON_IM_MOD_UNLOCKED, m_currentFocus);
+
+    *mask &= ~(lock_mask | sticky_mask);
+  } else if (*mask & sticky_mask) {
+    /* When the key is already sticky, a second press locks the key */
+    *mask |= lock_mask;
+
+    if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
+      sendHildonCommand(HILDON_IM_SHIFT_LOCKED, m_currentFocus);
+    else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
+      sendHildonCommand(HILDON_IM_MOD_LOCKED, m_currentFocus);
+  } else if (was_press_and_release) {
+    /* Pressing the key for the first time stickies the key for one character,
+     * but only if no characters were entered while holding the key down */
+    *mask |= sticky_mask;
+  }
+}
+
+QGraphicsObject *QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {
+  if (const auto *view = qobject_cast<QGraphicsView *>(w)) {
+    if (auto *item = qgraphicsitem_cast<QGraphicsObject *>(view->scene()->focusItem())) {
+      if (item->inherits("QDeclarativeTextEdit"))
+        return item;
+    }
+  }
+  return nullptr;
+}
