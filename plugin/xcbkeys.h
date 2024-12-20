@@ -104,7 +104,7 @@ inline xcb_keysym_t *xcb_keycode_to_keysyms(const xcb_setup_t *setup, xcb_get_ke
 inline xcb_keycode_t xcb_keysym_to_keycode(const xcb_setup_t *setup, xcb_get_keyboard_mapping_reply_t *mapping, xcb_keysym_t keysym) {
     const xcb_keysym_t *keysym_map = xcb_get_keysym_map(mapping);
     const unsigned int precalc = setup->min_keycode*mapping->keysyms_per_keycode; /* pre-calculating part of xcb_keycode_to_keysym_index() equation to make the for loop faster */
-    register unsigned char shift,keycode;
+    unsigned char shift, keycode;
     for(shift = 0; shift < mapping->keysyms_per_keycode; shift++) {
         for(keycode = setup->min_keycode; keycode < setup->max_keycode;keycode++) {
             if(keysym_map[keycode*mapping->keysyms_per_keycode-precalc+shift] == keysym)
