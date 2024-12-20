@@ -45,7 +45,7 @@
     <item row="3" column="0">
      <widget class="QLineEdit" name="line">
       <property name="text">
-       <string></string>
+       <string>Some text</string>
       </property>
      </widget>
     </item>
@@ -64,6 +64,9 @@
     </rect>
    </property>
    <widget class="QMenu" name="menuw00t">
+    <property name="title">
+     <string/>
+    </property>
     <addaction name="actionAbout"/>
     <addaction name="actionExit"/>
    </widget>
@@ -81,8 +84,6 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <resources>
-  <include location="assets.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

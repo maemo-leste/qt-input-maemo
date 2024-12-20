@@ -64,9 +64,11 @@ private:
   QHildonEventFilter *m_eventFilter;
   int m_inputMode = 0;
   QWidget* m_currentFocus = nullptr;
+  QWidget* m_lastKeyWidget = nullptr;
   bool m_lastInternalChange;
   int m_mask;
   int m_options;
+  int m_textCursorPosOnPress;  //position of the cursor in the surrounding text at the last TabletPress event
   bool m_autoUpper;
   bool lastInternalChange;
   bool m_spaceAfterCommit;
@@ -75,5 +77,6 @@ private:
   QString m_preEditBuffer;
 
   HildonIMTrigger m_triggerMode = HILDON_IM_TRIGGER_KEYBOARD;
-  HildonIMCommitMode m_commitMode, m_lastCommitMode;
+  HildonIMCommitMode m_commitMode;
+  HildonIMCommitMode m_lastCommitMode;
 };

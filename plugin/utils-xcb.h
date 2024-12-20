@@ -12,7 +12,7 @@
 namespace QXcb {
   extern xcb_connection_t* CONNECTION;
   inline xcb_client_message_event_t* createMessageEvent() {
-    auto *event = static_cast<xcb_client_message_event_t *>(calloc(32, 1));
+    auto *event = static_cast<xcb_client_message_event_t *>(calloc(1, sizeof(xcb_client_message_event_t)));
     if (!event) {
       qWarning() << "could not allocate memory for xcb event";
       free(event);
