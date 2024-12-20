@@ -1,10 +1,6 @@
 file(GLOB SOURCE_FILES
         "*.h"
         "*.cpp"
-        "lib/*.h"
-        "lib/*.cpp"
-        "xcb-maemo/*.h"
-        "xcb-maemo/*.cpp"
 )
 
 add_executable(example main.cpp
@@ -12,6 +8,12 @@ add_executable(example main.cpp
         ${RESOURCES}
 )
 
+# generate globals.h (path to custom Qt plugins dir)
+configure_file(
+        ${CMAKE_SOURCE_DIR}/cmake/globals.h.cmake
+        ${CMAKE_BINARY_DIR}/example/globals.h
+        @ONLY # only @VARIABLE@ placeholders
+)
 
 set_property(TARGET example PROPERTY RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
@@ -52,7 +54,6 @@ target_link_libraries(example PUBLIC
         Qt5::X11Extras
         Qt5::Network
         Qt5::Xml
-        #-lQt5XcbMaemoQpa
 )
 
 target_compile_definitions(example

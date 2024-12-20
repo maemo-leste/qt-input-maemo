@@ -14,31 +14,13 @@ if(NOT CMAKE_BUILD_TYPE)
             "Default build type: Release" FORCE)
 endif()
 
-# generate globals.h (path to custom Qt plugins dir)
-configure_file(
-        ${CMAKE_SOURCE_DIR}/cmake/globals.h.cmake
-        ${CMAKE_BINARY_DIR}/example/globals.h
-        @ONLY # only @VARIABLE@ placeholders
-)
+find_package(X11 REQUIRED)
+message(STATUS "X11_FOUND = ${X11_FOUND}")
+message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
+message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")
 
-# Find X11
-if(UNIX AND NOT APPLE AND NOT ANDROID)
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CMAKE_SKIP_RPATH ON)
-    endif()
-
-    find_package(X11 REQUIRED)
-    message(STATUS "X11_FOUND = ${X11_FOUND}")
-    message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
-    message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")
-
-    include_directories(${X11_INCLUDE_DIR})
-    link_directories(${X11_LIBRARIES})
-    if(STATIC)
-        find_library(XCB_LIBRARY xcb)
-        message(STATUS "Found xcb library: ${XCB_LIBRARY}")
-    endif()
-endif()
+include_directories(${X11_INCLUDE_DIR})
+link_directories(${X11_LIBRARIES})
 
 # global compile defs
 pkg_check_modules(LIBHILDON hildon-1)
