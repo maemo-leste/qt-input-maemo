@@ -47,9 +47,9 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(PLUGIN_INSTALL_TARGET "${QT_PLUGINS_DIR}/platforminputcontexts/libhiminputcontextplugin.so")
+set(PLUGIN_INSTALL_TARGET "${QT_PLUGINS_DIR}/platforminputcontexts/")
 message(STATUS "install target: ${PLUGIN_INSTALL_TARGET}")
-install(TARGETS plugin LIBRARY DESTINATION platforminputcontexts)
+install(TARGETS plugin LIBRARY DESTINATION ${PLUGIN_INSTALL_TARGET})
 
 # summary
 message(STATUS "[+] Build type: ${CMAKE_BUILD_TYPE}")
