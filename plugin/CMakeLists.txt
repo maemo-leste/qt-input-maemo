@@ -32,5 +32,23 @@ target_link_libraries(plugin
         -lQt5XcbMaemoQpa
 )
 
-# @TODO: /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libhiminputcontextplugin.so
+
+# install target with dest: /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/
+# find this path with qmake
+execute_process(
+    COMMAND qmake -query QT_INSTALL_PLUGINS
+    OUTPUT_VARIABLE QT_PLUGINS_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+set(PLUGIN_INSTALL_TARGET "${QT_PLUGINS_DIR}/platforminputcontexts/libhiminputcontextplugin.so")
+message(STATUS "install target: ${PLUGIN_INSTALL_TARGET}")
 install(TARGETS plugin LIBRARY DESTINATION platforminputcontexts)
+
+# summary
+message(STATUS "[+] Build type: ${CMAKE_BUILD_TYPE}")
+if(BUILD_EXAMPLE)
+    message(STATUS "[+] Build example: yes")
+else()
+    message(STATUS "[+] Build example: no")
+endif()

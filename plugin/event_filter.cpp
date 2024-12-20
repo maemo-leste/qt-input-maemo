@@ -20,11 +20,11 @@ bool QHildonEventFilter::nativeEventFilter(const QByteArray &eventType, void *me
       case XCB_CLIENT_MESSAGE: {
         auto *event_message = reinterpret_cast<xcb_client_message_event_t *>(event);
         if (const xcb_atom_t atom = event_message->type; HILDON_ATOM_MAP.contains(atom)) {
-          this->ctx->parseHildonCommand(event_message);
-        } else {
-          printf("unrelated ClientMessage received, type: %u\n", event_message->type);
-          fflush(stdout);
+          return this->ctx->parseHildonCommand(event_message);
         }
+
+        printf("unrelated ClientMessage received, type: %u\n", event_message->type);
+        fflush(stdout);
         break;
       }
       default:;

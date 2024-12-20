@@ -14,7 +14,9 @@
 #include "event_filter.h"
 #include "utils-hildon.h"
 #include "utils-xcb.h"
-#include "qtkey.h"
+#include "xcb/xcb.h"
+
+// #include "qtkey.h"
 
 #include <qpa/qplatforminputcontext.h>
 #include <xcb/xcb.h>
@@ -36,6 +38,8 @@ public:
   void setFocusObject(QObject *object) override;
   [[nodiscard]] bool isValid() const override { return true; }
 
+private slots:
+  void onLongPressDetected();
 private:
   [[nodiscard]] QWidget* focusWidget() const { return m_currentFocus; }
   void insertUtf8(int flag, const QString& text);
@@ -57,12 +61,12 @@ private:
   static bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
   static QGraphicsObject* qDeclarativeTextEdit_cast(QWidget *w);
   static void answerClipboardSelectionQuery(const QWidget *widget);
-
 private:
   QHildonEventFilter *m_eventFilter;
   int m_inputMode = 0;
   QWidget* m_currentFocus = nullptr;
   QWidget* m_lastKeyWidget = nullptr;
+  QString m_lastCommitString;
   bool m_lastInternalChange;
   int m_mask;
   int m_options;
@@ -71,6 +75,7 @@ private:
   bool lastInternalChange;
   bool m_spaceAfterCommit;
   int m_lastQtKeyCode;
+  QTimer *m_longPressTimer;
 
   QString m_preEditBuffer;
 

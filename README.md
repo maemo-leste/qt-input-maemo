@@ -5,7 +5,21 @@ Qt5 input module to handle Hildon events, incl. the virtual keyboard.
 - `plugin/` - The plugin
 - `example/` - Qt GUI test app 
 
-Produces `libhiminputcontextplugin.so` and registers the input module under the key "him" for system-wide use.
+## Installation
+
+The following build instructions will install this input module to `/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/`.
+
+```bash
+cmake -Bbuild .
+make -Cbuild -j4
+sudo make install
+```
+
+After installation, simply run any Qt5 program with the `QT_IM_MODULE` environment variable:
+
+```bash
+QT_IM_MODULE=him ./some_qt_app
+```
 
 ## Development
 

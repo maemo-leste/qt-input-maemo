@@ -2,6 +2,7 @@
 #include <cstdint>
 
 // this is mostly /usr/include/hildon-input-method/hildon-im-protocol.h
+// get rid of this, and include that one instead.
 
 #define HILDON_IM_CLIENT_MESSAGE_BUFFER_SIZE (20 - sizeof(int))
 

@@ -4,6 +4,8 @@
 
 #include "input_context.h"
 
+#define DEFAULT_LONG_PRESS_TIMEOUT 600
+
 QHildonInputContext::QHildonInputContext() :
       m_inputMode(HILDON_GTK_INPUT_MODE_FULL),
       m_lastKeyWidget(nullptr),
@@ -38,46 +40,11 @@ QHildonInputContext::QHildonInputContext() :
   QXcb::initialiseHildonAtoms();
   QXcb::initialiseHildonComEnums();
 
-  // sendKey(new QWidget(), Qt::Key_Enter);
-  // setCommitMode(HILDON_IM_COMMIT_DIRECT, false);
-}
-
-/*! \internal
-In redirect mode we use a proxy widget (fullscreen vkb). When the cursor position
- *  changes there, the HIM update the cursor position in the client (Qt application)
- */
-void QHildonInputContext::setClientCursorLocation(const bool offsetIsRelative, int cursorOffset) {
-  qDebug() << "HIM: setClientCursorLocation(" << offsetIsRelative << ", " << cursorOffset<< ")";
-
-  QWidget *w = focusWidget();
-  if (!w)
-    return;
-
-  if (offsetIsRelative)
-    cursorOffset += w->inputMethodQuery(Qt::ImCursorPosition).toInt();
-
-  QList<QInputMethodEvent::Attribute> attributes;
-  attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, cursorOffset, 0, QVariant());
-
-  QInputMethodEvent e(QString(), attributes);
-  QApplication::sendEvent(w, &e);
-}
-
-void QHildonInputContext::commitPreEditBuffer() {
-  qDebug() << "HIM: commitPreeditBuffer()";
-
-  QWidget *w = focusWidget();
-  if (!w)
-    return;
-
-  QInputMethodEvent e;
-  if (m_spaceAfterCommit)
-    e.setCommitString(m_preEditBuffer + QLatin1Char(' '));
-  else
-    e.setCommitString(m_preEditBuffer);
-
-  QApplication::sendEvent(w, &e);
-  m_preEditBuffer.clear();
+  // long press timer
+  m_longPressTimer = new QTimer(this);
+  m_longPressTimer->setInterval(DEFAULT_LONG_PRESS_TIMEOUT);
+  m_longPressTimer->setSingleShot(true);
+  connect(m_longPressTimer, &QTimer::timeout, this, &QHildonInputContext::onLongPressDetected);
 }
 
 bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) {
@@ -100,8 +67,6 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
     }
 
     auto com = HILDON_COM_MAP[msg->type];
-
-    // eww
     m_options = msg->options;
 
     qDebug() << "HIM: parse( _HILDON_IM_COM /" << com.name << ")";
@@ -201,12 +166,55 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
       default:
         break;
     }
-  } else if (msg_atom.hildon_enum == HILDON_IM_SURROUNDING_CONTENT) {
-    auto* msg = reinterpret_cast<HildonIMSurroundingContentMessage *>(&event->data);
-    qDebug() << "received:" << msg->surrounding;
+  } else if (msg_atom.hildon_enum == HILDON_IM_SURROUNDING_CONTENT && message_format == HILDON_IM_SURROUNDING_CONTENT_FORMAT) {
+    qWarning() << "HIM: x11FilterEvent( _HILDON_IM_SURROUNDING_CONTENT ) is not supported";
+  } else if (msg_atom.hildon_enum == HILDON_IM_SURROUNDING && message_format == HILDON_IM_SURROUNDING_FORMAT) {
+    const auto * msg = reinterpret_cast<HildonIMSurroundingMessage *>(&event->data);
+    setClientCursorLocation(msg->offset_is_relative, msg->cursor_offset );
+    return true;
+  } else if (msg_atom.hildon_enum == HILDON_IM_LONG_PRESS_SETTINGS) {
+    if (const auto *msg = reinterpret_cast<HildonIMLongPressSettingsMessage *>(&event->data); msg->enable_long_press) {
+      m_longPressTimer->setInterval(msg->long_press_timeout > 0 ? msg->long_press_timeout : DEFAULT_LONG_PRESS_TIMEOUT);
+    } else {
+      m_longPressTimer->stop();
+      m_longPressTimer->setInterval(0);
+    }
+    return true;
   }
 
   return false;
+}
+
+void QHildonInputContext::onLongPressDetected() {
+  qDebug("HIM: longPressDetected @TODO: implement me");
+
+  // if (longPressKeyEvent.isNull() || !lastKeyWidget)
+  //   return;
+  //
+  // int oldMask = m_mask;
+  //
+  // if (m_mask & HILDON_IM_LEVEL_LOCK_MASK)
+  //   m_mask &= ~(HILDON_IM_LEVEL_LOCK_MASK | HILDON_IM_LEVEL_STICKY_MASK);
+  // else
+  //   m_mask |= HILDON_IM_LEVEL_STICKY_MASK;
+  //
+  // cancelPreedit();
+  //
+  // MyKeyEventEx *ke = static_cast<MyKeyEventEx *>(longPressKeyEvent.data());
+  // filterKey(lastKeyWidget, ke, true);
+  // ke->release();
+  // filterKey(lastKeyWidget, ke, true);
+  //
+  // qDebug() << "HIM: lastCommitString.lenght() == " << lastCommitString.length();
+  // if (!m_lastCommitString.isEmpty()) {
+  //   qDebug() << "HIM: sending Left/Backspace/Right";
+  //   sendKey(lastKeyWidget, Qt::Key_Left);
+  //   sendKey(lastKeyWidget, Qt::Key_Backspace);
+  //   sendKey(lastKeyWidget, Qt::Key_Right);
+  // }
+  //
+  // longPressKeyEvent.reset(0);
+  // m_mask = oldMask;
 }
 
 void QHildonInputContext::clearSelection() const {
@@ -431,9 +439,6 @@ void QHildonInputContext::updateInputMethodHints() {
 }
 
 void QHildonInputContext::setFocusObject(QObject *object) {
-  // if (!show_again)
-  //   return;
-
   const auto w = qobject_cast<QWidget *>(object);
   if (!w) {
     qDebug() << "Focus cleared.";
@@ -463,7 +468,6 @@ void QHildonInputContext::setFocusObject(QObject *object) {
   QPlatformInputContext::setFocusObject(object);
   updateInputMethodHints();
   sendHildonCommand(HILDON_IM_SETCLIENT, w);
-  // show_again = false;
 }
 
 void QHildonInputContext::sendSurrounding(bool sendAllContents) {
@@ -597,8 +601,6 @@ void QHildonInputContext::hideInputPanel() {
   // sendHildonCommand(HILDON_IM_HIDE)
 }
 
-QHildonInputContext::~QHildonInputContext() { sendHildonCommand(HILDON_IM_HIDE); }
-
 void QHildonInputContext::setCommitMode(HildonIMCommitMode mode, bool clearPreEdit) {
   if (m_commitMode != mode) {
     if (clearPreEdit)
@@ -720,7 +722,44 @@ void QHildonInputContext::setMaskState(int *mask, HildonIMInternalModifierMask l
   }
 }
 
-#include "xcb/xcb.h"
+/*! \internal
+In redirect mode we use a proxy widget (fullscreen vkb). When the cursor position
+ *  changes there, the HIM update the cursor position in the client (Qt application)
+ */
+void QHildonInputContext::setClientCursorLocation(const bool offsetIsRelative, int cursorOffset) {
+  qDebug() << "HIM: setClientCursorLocation(" << offsetIsRelative << ", " << cursorOffset<< ")";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  if (offsetIsRelative)
+    cursorOffset += w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+
+  QList<QInputMethodEvent::Attribute> attributes;
+  attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, cursorOffset, 0, QVariant());
+
+  QInputMethodEvent e(QString(), attributes);
+  QApplication::sendEvent(w, &e);
+}
+
+void QHildonInputContext::commitPreEditBuffer() {
+  qDebug() << "HIM: commitPreeditBuffer()";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  QInputMethodEvent e;
+  if (m_spaceAfterCommit)
+    e.setCommitString(m_preEditBuffer + QLatin1Char(' '));
+  else
+    e.setCommitString(m_preEditBuffer);
+
+  QApplication::sendEvent(w, &e);
+  m_preEditBuffer.clear();
+}
+
 /*! Sends the key as a spontaneous event.
  */
 void QHildonInputContext::sendKey(QWidget *keywidget, int qtCode) {
@@ -760,11 +799,7 @@ void QHildonInputContext::sendKey(QWidget *keywidget, int qtCode) {
     return;
 
   QKeyEvent release(QEvent::KeyRelease, qtCode, Qt::NoModifier, keycode, keysym, 0, QString(), false, 1);
-  qt_sendSpontaneousEvent(keywidget, &click);
-}
-
-bool QHildonInputContext::qt_sendSpontaneousEvent(QObject *receiver, QEvent *event) {
-  return QCoreApplication::sendEvent(receiver, event);
+  qt_sendSpontaneousEvent(keywidget, &release);
 }
 
 /*!
@@ -796,6 +831,10 @@ void QHildonInputContext::answerClipboardSelectionQuery(const QWidget *widget) {
   free(event);
 }
 
+bool QHildonInputContext::qt_sendSpontaneousEvent(QObject *receiver, QEvent *event) {
+  return QCoreApplication::sendEvent(receiver, event);
+}
+
 QGraphicsObject* QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {
   if (const auto *view = qobject_cast<QGraphicsView *>(w)) {
     if (auto *item = qgraphicsitem_cast<QGraphicsObject *>(view->scene()->focusItem())) {
@@ -804,4 +843,8 @@ QGraphicsObject* QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {
     }
   }
   return nullptr;
+}
+
+QHildonInputContext::~QHildonInputContext() {
+  sendHildonCommand(HILDON_IM_HIDE);
 }
