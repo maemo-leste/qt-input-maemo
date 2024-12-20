@@ -9,6 +9,11 @@ include(FindCcache)
 
 option(BUILD_EXAMPLE "Build the example application" OFF)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+            "Default build type: Release" FORCE)
+endif()
+
 # generate globals.h (path to custom Qt plugins dir)
 configure_file(
         ${CMAKE_SOURCE_DIR}/cmake/globals.h.cmake
