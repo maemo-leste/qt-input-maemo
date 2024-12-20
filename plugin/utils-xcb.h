@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <xcb/xcb.h>
-#include "xcbkeys.h"
 
 #include "utils-hildon.h"
 

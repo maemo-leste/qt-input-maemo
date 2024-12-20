@@ -14,6 +14,12 @@ if(NOT CMAKE_BUILD_TYPE)
             "Default build type: Release" FORCE)
 endif()
 
+find_package(PkgConfig REQUIRED)
+
+# These 2 are needed because we include `hildon-im-protocol.h` for some enums
+pkg_check_modules(GTK REQUIRED gtk+-2.0)
+pkg_check_modules(HIM3 REQUIRED hildon-input-method-framework-3.0)
+
 find_package(X11 REQUIRED)
 message(STATUS "X11_FOUND = ${X11_FOUND}")
 message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")

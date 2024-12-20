@@ -1,8 +1,11 @@
 #pragma once
-#include <QtCore>
+#include <QObject>
+#include <QTimer>
+#include <QPointer>
 #include <QApplication>
 #include <QCoreApplication>
-
+#include <QEvent>
+#include <QKeyEvent>
 #include <QInputMethodEvent>
 #include <QTextFormat>
 #include <QTextEdit>
@@ -11,15 +14,10 @@
 #include <QClipboard>
 #include <QGraphicsView>
 
+#include <qpa/qplatforminputcontext.h>
+
 #include "event_filter.h"
 #include "utils-hildon.h"
-#include "utils-xcb.h"
-#include "xcb/xcb.h"
-
-// #include "qtkey.h"
-
-#include <qpa/qplatforminputcontext.h>
-#include <xcb/xcb.h>
 
 class QHildonInputContext : public QPlatformInputContext {
 public:

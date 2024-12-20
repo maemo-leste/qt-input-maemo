@@ -3,6 +3,10 @@
 #include <QWidget>
 
 #include "input_context.h"
+// #include "xcb/xcb.h"
+
+#include "utils-hildon.h"
+#include "utils-xcb.h"
 
 #define DEFAULT_LONG_PRESS_TIMEOUT 600
 

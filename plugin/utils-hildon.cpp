@@ -51,25 +51,3 @@ QStringList hildonComNames = {
   "HILDON_IM_CONTEXT_SHIFT_UNSTICKY",
   "HILDON_IM_CONTEXT_LEVEL_UNSTICKY"
 };
-
-// /*! XkbLookupKeySym ( X11->display, event->nativeScanCode(), HILDON_IM_SHIFT_STICKY_MASK, &mods_rtrn, sym_rtrn)
-//  */
-// static QString translateKeycodeAndState(KeyCode key, uint state, KeySym &keysym) {
-//   uint mods;
-//   KeySym *ks = &keysym;
-//   if ( XkbLookupKeySym ( X11->display, key, state, &mods, ks) )
-//     return QKeyMapperPrivate::maemo5TranslateKeySym(*ks);
-//   else
-//     return QString();
-// }
-//
-// QString QKeyMapperPrivate::maemo5TranslateKeySym(KeySym keysym)
-// {
-//   uint xmodifiers = 0;
-//   int code = 0;
-//   Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-//   QByteArray chars;
-//   int count = 0;
-//
-//   return translateKeySym(keysym, xmodifiers, code, modifiers, chars, count);
-// }

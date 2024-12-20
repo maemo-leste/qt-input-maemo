@@ -1,5 +1,6 @@
 #include "utils-xcb.h"
 #include "utils-hildon.h"
+#include "xcbkeys.h"
 
 namespace QXcb {
   // extern

@@ -1,10 +1,6 @@
 file(GLOB SOURCE_FILES
-        "*.h"
-        "*.cpp"
-        "lib/*.h"
-        "lib/*.cpp"
-        "xcb-maemo/*.h"
-        "xcb-maemo/*.cpp"
+    "*.h"
+    "*.cpp"
 )
 
 add_library(plugin MODULE ${SOURCE_FILES})
@@ -18,9 +14,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(plugin PRIVATE DEBUG=1)
 endif()
 
-target_include_directories(plugin PUBLIC ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
-target_include_directories(plugin PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
+# This definition is needed to stop a declaration conflict with
+# 'HILDON_GTK_INPUT_MODE_ALPHA' (and others) both defined in
+# 'hildon-im-protocol.h' and 'gtkenums.h'.
+# We can remove this if we get rid of the !defined(MAEMO_CHANGES)
+# inside 'hildon-im-protocol.h'
+target_compile_definitions(plugin PRIVATE MAEMO_CHANGES=1)
+
+target_include_directories(plugin PRIVATE
+    ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
+    ${HIM3_INCLUDE_DIRS}
+    ${GTK_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(plugin
@@ -29,7 +34,8 @@ target_link_libraries(plugin
         Qt5::Gui
         Qt5::GuiPrivate # for qpa
         Qt5::X11Extras
-        -lQt5XcbMaemoQpa
+        ${HIM3_LIBRARIES}
+        ${GTK_LIBRARIES}
 )
 
 
