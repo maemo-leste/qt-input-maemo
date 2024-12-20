@@ -8,6 +8,7 @@
 #include <QTextEdit>
 #include <QPlainTextEdit>
 #include <QGraphicsObject>
+#include <QClipboard>
 #include <QGraphicsView>
 
 #include "event_filter.h"
@@ -15,50 +16,47 @@
 #include "utils-xcb.h"
 #include "qtkey.h"
 
-// #include "lib/xcb-maemo/qxcbintegration.h"
-// #include "lib/xcb-maemo/qxcbconnection.h"
-
 #include <qpa/qplatforminputcontext.h>
 #include <xcb/xcb.h>
 
-class MyXcbEventFilter;
 class QHildonInputContext : public QPlatformInputContext {
 public:
   QHildonInputContext();
   void sendHildonCommand(HildonIMCommand cmd, const QWidget *widget = nullptr) const;
   bool parseHildonCommand(xcb_client_message_event_t *event);
-  QWidget *focusWidget();
-  void insertUtf8(int flag, const QString& text);
 
-  //void showSoftKeyboard();
+  // void showSoftKeyboard();
   void showInputPanel() override;
   void hideInputPanel() override;
   ~QHildonInputContext() override;
 
-  bool is_gui = false;
-  bool show_again = true;
+  bool is_gui = false; // Qt app is GUI or console?
+  // bool show_again = true;
 
   void setFocusObject(QObject *object) override;
   [[nodiscard]] bool isValid() const override { return true; }
 
 private:
-  // context
+  [[nodiscard]] QWidget* focusWidget() const { return m_currentFocus; }
+  void insertUtf8(int flag, const QString& text);
+  void cancelPreedit();
   void checkSentenceStart();
-  void commitPreeditBuffer();
+  void commitPreEditBuffer();
+  void clearSelection() const;
   void sendSurrounding(bool sendAllContents = false);
   void sendInputMode() const;
   void setClientCursorLocation(bool offsetIsRelative, int cursorOffset);
   void setCommitMode(HildonIMCommitMode mode, bool clearPreEdit = true);
-
   void setMaskState(int *mask,
-                           HildonIMInternalModifierMask lock_mask,
-                           HildonIMInternalModifierMask sticky_mask,
-                           bool was_press_and_release) const;
+    HildonIMInternalModifierMask lock_mask,
+    HildonIMInternalModifierMask sticky_mask,
+    bool was_press_and_release) const;
   void updateInputMethodHints();
-
+private:
   static void sendKey(QWidget *keywidget, int qtCode);
   static bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
   static QGraphicsObject* qDeclarativeTextEdit_cast(QWidget *w);
+  static void answerClipboardSelectionQuery(const QWidget *widget);
 
 private:
   QHildonEventFilter *m_eventFilter;

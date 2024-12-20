@@ -42,8 +42,46 @@ QHildonInputContext::QHildonInputContext() :
   // setCommitMode(HILDON_IM_COMMIT_DIRECT, false);
 }
 
+/*! \internal
+In redirect mode we use a proxy widget (fullscreen vkb). When the cursor position
+ *  changes there, the HIM update the cursor position in the client (Qt application)
+ */
+void QHildonInputContext::setClientCursorLocation(const bool offsetIsRelative, int cursorOffset) {
+  qDebug() << "HIM: setClientCursorLocation(" << offsetIsRelative << ", " << cursorOffset<< ")";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  if (offsetIsRelative)
+    cursorOffset += w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+
+  QList<QInputMethodEvent::Attribute> attributes;
+  attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, cursorOffset, 0, QVariant());
+
+  QInputMethodEvent e(QString(), attributes);
+  QApplication::sendEvent(w, &e);
+}
+
+void QHildonInputContext::commitPreEditBuffer() {
+  qDebug() << "HIM: commitPreeditBuffer()";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  QInputMethodEvent e;
+  if (m_spaceAfterCommit)
+    e.setCommitString(m_preEditBuffer + QLatin1Char(' '));
+  else
+    e.setCommitString(m_preEditBuffer);
+
+  QApplication::sendEvent(w, &e);
+  m_preEditBuffer.clear();
+}
+
 bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) {
-  QHildonIMAtom msg_atom = HILDON_ATOM_MAP[event->type];
+  const QHildonIMAtom msg_atom = HILDON_ATOM_MAP[event->type];
   const auto message_format = event->format;
 
   qDebug() << "HIM: parse" << HILDON_ATOM_MAP[event->type].name;
@@ -68,44 +106,44 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
 
     qDebug() << "HIM: parse( _HILDON_IM_COM /" << com.name << ")";
 
-  switch (msg->type) {
-    // Handle Keys msgs
-    // case HILDON_IM_CONTEXT_HANDLE_ENTER:
-    //   sendKey(keywidget, Qt::Key_Enter);
-    //   return true;
-    // case HILDON_IM_CONTEXT_HANDLE_TAB:
-    //   sendKey(keywidget, Qt::Key_Tab);
-    //   return true;
-    // case HILDON_IM_CONTEXT_HANDLE_BACKSPACE:
-    //   sendKey(keywidget, Qt::Key_Backspace);
-    //   return true;
-    // case HILDON_IM_CONTEXT_HANDLE_SPACE:
-    //   insertUtf8(HILDON_IM_MSG_CONTINUE, QChar(Qt::Key_Space));
-    //   commitm_preEditBuffer();
-    //   return true;
+    switch (msg->type) {
+      // Handle Keys msgs
+      case HILDON_IM_CONTEXT_HANDLE_ENTER:
+        sendKey(m_currentFocus, Qt::Key_Enter);
+        return true;
+      case HILDON_IM_CONTEXT_HANDLE_TAB:
+        sendKey(m_currentFocus, Qt::Key_Tab);
+        return true;
+      case HILDON_IM_CONTEXT_HANDLE_BACKSPACE:
+        sendKey(m_currentFocus, Qt::Key_Backspace);
+        return true;
+      case HILDON_IM_CONTEXT_HANDLE_SPACE:
+        insertUtf8(HILDON_IM_MSG_CONTINUE, QChar(Qt::Key_Space));
+        commitPreEditBuffer();
+        return true;
 
-    // Handle Clipboard msgs
-    // case HILDON_IM_CONTEXT_CLIPBOARD_SELECTION_QUERY:
-    //   answerClipboardSelectionQuery(keywidget);
-    //   return true;
-    // case HILDON_IM_CONTEXT_CLIPBOARD_PASTE:
-    //   if (QClipboard *clipboard = QApplication::clipboard()) {
-    //     QInputMethodEvent e;
-    //     e.setCommitString(clipboard->text());
-    //     QApplication::sendEvent(keywidget, &e);
-    //   }
-    //   return true;
-    // case HILDON_IM_CONTEXT_CLIPBOARD_COPY:
-    //   if (QClipboard *clipboard = QApplication::clipboard())
-    //     clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
-    //   return true;
-    // case HILDON_IM_CONTEXT_CLIPBOARD_CUT:
-    //   if (QClipboard *clipboard = QApplication::clipboard()) {
-    //     clipboard->setText(keywidget->inputMethodQuery(Qt::ImCurrentSelection).toString());
-    //     QInputMethodEvent ev;
-    //     QApplication::sendEvent(keywidget, &ev);
-    //   }
-    //   return true;
+      // Handle Clipboard msgs
+      case HILDON_IM_CONTEXT_CLIPBOARD_SELECTION_QUERY:
+        answerClipboardSelectionQuery(m_currentFocus);
+        return true;
+      case HILDON_IM_CONTEXT_CLIPBOARD_PASTE:
+        if (const QClipboard *clipboard = QApplication::clipboard()) {
+          QInputMethodEvent e;
+          e.setCommitString(clipboard->text());
+          QApplication::sendEvent(m_currentFocus, &e);
+        }
+        return true;
+      case HILDON_IM_CONTEXT_CLIPBOARD_COPY:
+        if (QClipboard *clipboard = QApplication::clipboard())
+          clipboard->setText(m_currentFocus->inputMethodQuery(Qt::ImCurrentSelection).toString());
+        return true;
+      case HILDON_IM_CONTEXT_CLIPBOARD_CUT:
+        if (QClipboard *clipboard = QApplication::clipboard()) {
+          clipboard->setText(m_currentFocus->inputMethodQuery(Qt::ImCurrentSelection).toString());
+          QInputMethodEvent ev;
+          QApplication::sendEvent(m_currentFocus, &ev);
+        }
+        return true;
 
       // Handle commit mode msgs
       case HILDON_IM_CONTEXT_DIRECT_MODE:
@@ -116,7 +154,7 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
         return true;
       case HILDON_IM_CONTEXT_REDIRECT_MODE:
         setCommitMode(HILDON_IM_COMMIT_REDIRECT);
-        // @TODO: clearSelection();
+        clearSelection();
         return true;
       case HILDON_IM_CONTEXT_SURROUNDING_MODE:
         setCommitMode(HILDON_IM_COMMIT_SURROUNDING);
@@ -129,9 +167,9 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
       case HILDON_IM_CONTEXT_CONFIRM_SENTENCE_START:
         checkSentenceStart();
         return true;
-      // case HILDON_IM_CONTEXT_FLUSH_PREEDIT:
-      //   commitm_preEditBuffer();
-      //   return true;
+      case HILDON_IM_CONTEXT_FLUSH_PREEDIT:
+        commitPreEditBuffer();
+        return true;
       case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
         sendSurrounding(false);
         return true;
@@ -141,9 +179,9 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
       case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
         m_mask &= ~(HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK);
         return true;
-      // case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
-      //   cancelPreedit();
-      //   return true;
+      case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
+        cancelPreedit();
+        return true;
       case HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL:
         sendSurrounding(true);
         return true;
@@ -171,7 +209,46 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
   return false;
 }
 
-QWidget *QHildonInputContext::focusWidget() { return m_currentFocus; }
+void QHildonInputContext::clearSelection() const {
+  qDebug() << "HIM: clearSelection()";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  int textCursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+  QString selection = w->inputMethodQuery(Qt::ImCurrentSelection).toString();
+
+  if (selection.isEmpty())
+    return;
+
+  //Remove the selection
+  QInputMethodEvent e;
+  e.setCommitString(selection);
+  QApplication::sendEvent(w, &e);
+
+  //Move the cursor backward if the text has been selected from right to left
+  if (textCursorPos < m_textCursorPosOnPress){
+    QInputMethodEvent e;
+    e.setCommitString(QString(), -selection.length(),0);
+    QApplication::sendEvent(w, &e);
+  }
+}
+
+void QHildonInputContext::cancelPreedit() {
+  qDebug() << "HIM: cancelPreedit()";
+
+  QWidget *w = focusWidget();
+  if (!w)
+    return;
+
+  if (m_preEditBuffer.isEmpty())
+    return;
+  m_preEditBuffer.clear();
+
+  QInputMethodEvent e;
+  QApplication::sendEvent(w, &e);
+}
 
 void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWidget *widget) const {
   qDebug() << "sendHildonCommand" << cmd;
@@ -197,6 +274,7 @@ void QHildonInputContext::sendHildonCommand(const HildonIMCommand cmd, const QWi
   auto *msg = reinterpret_cast<HildonIMActivateMessage *>(&event->data.data8[0]);
 
   if (widget) {
+    // @TODO: uhmmm
     const int winId = static_cast<int>(widget->window()->winId());
     msg->input_window = winId;
     msg->app_window = winId;
@@ -353,8 +431,8 @@ void QHildonInputContext::updateInputMethodHints() {
 }
 
 void QHildonInputContext::setFocusObject(QObject *object) {
-  if (!show_again)
-    return;
+  // if (!show_again)
+  //   return;
 
   const auto w = qobject_cast<QWidget *>(object);
   if (!w) {
@@ -385,7 +463,7 @@ void QHildonInputContext::setFocusObject(QObject *object) {
   QPlatformInputContext::setFocusObject(object);
   updateInputMethodHints();
   sendHildonCommand(HILDON_IM_SETCLIENT, w);
-  show_again = false;
+  // show_again = false;
 }
 
 void QHildonInputContext::sendSurrounding(bool sendAllContents) {
@@ -529,24 +607,6 @@ void QHildonInputContext::setCommitMode(HildonIMCommitMode mode, bool clearPreEd
   }
 
   m_commitMode = mode;
-}
-
-void QHildonInputContext::commitPreeditBuffer() {
-  qDebug() << "HIM: commitPreeditBuffer()";
-
-  QWidget *w = focusWidget();
-  if (!w)
-    return;
-
-  QInputMethodEvent e;
-
-  if (m_spaceAfterCommit)
-    e.setCommitString(m_preEditBuffer + QLatin1Char(' '));
-  else
-    e.setCommitString(m_preEditBuffer);
-
-  QApplication::sendEvent(w, &e);
-  m_preEditBuffer.clear();
 }
 
 // CONTEXT
@@ -705,6 +765,35 @@ void QHildonInputContext::sendKey(QWidget *keywidget, int qtCode) {
 
 bool QHildonInputContext::qt_sendSpontaneousEvent(QObject *receiver, QEvent *event) {
   return QCoreApplication::sendEvent(receiver, event);
+}
+
+/*!
+ */
+void QHildonInputContext::answerClipboardSelectionQuery(const QWidget *widget) {
+  bool hasSelection = !widget->inputMethodQuery(Qt::ImCurrentSelection).toString().isEmpty();
+
+  xcb_window_t hildon_im_window = QXcb::findHildonIm();
+  if (!hildon_im_window) {
+    qWarning() << "sendHildonCommand: could not find hildon_im_window";
+    return;
+  }
+
+  auto *event = QXcb::createMessageEvent();
+  if (!event) {
+    free(event);
+    return;
+  }
+
+  event->response_type = XCB_CLIENT_MESSAGE;
+  event->format = HILDON_IM_CLIPBOARD_SELECTION_REPLY_FORMAT;
+  event->sequence = 0;
+  event->window = hildon_im_window;
+  event->type = QXcb::hildon_atom(HILDON_IM_CLIPBOARD_SELECTION_REPLY).xcb_atom;
+  event->data.data32[0] = hasSelection;  // @TODO: test if this works
+
+  xcb_send_event(QXcb::CONNECTION, 0, hildon_im_window, 0, reinterpret_cast<const char *>(event));
+  xcb_flush(QXcb::CONNECTION);
+  free(event);
 }
 
 QGraphicsObject* QHildonInputContext::qDeclarativeTextEdit_cast(QWidget *w) {

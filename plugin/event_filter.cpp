@@ -16,7 +16,6 @@ bool QHildonEventFilter::nativeEventFilter(const QByteArray &eventType, void *me
   if (eventType == "xcb_generic_event_t") {
     auto *event = static_cast<xcb_generic_event_t *>(message);
     auto bla = event->response_type & ~0x80;
-    int wegewg = 1;
     switch (bla) {
       case XCB_CLIENT_MESSAGE: {
         auto *event_message = reinterpret_cast<xcb_client_message_event_t *>(event);
