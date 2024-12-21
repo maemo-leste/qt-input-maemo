@@ -6,11 +6,6 @@
 #include "globals.h"
 #include "mainwindow.h"
 
-//#include <qpa/qplatforminputcontext.h>
-//#include <qpa/qplatformintegration.h>
-//#include <qpa/qplatforminputcontext.h>
-//#include "private/qguiapplication_p.h"
-
 #ifdef DEBUG
   #include "clion_debug.h"
 #endif
