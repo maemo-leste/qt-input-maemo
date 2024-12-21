@@ -1,4 +1,4 @@
-Source: qt5-im-him
+Source: qt-input-maemo
 Section: x11
 Priority: extra
 Maintainer: Sander <code@kroket.io>
@@ -9,13 +9,13 @@ Build-Depends: debhelper (>= 10),
     libqt5x11extras5-dev,
     libgtk2.0-dev,
     hildon-input-method-framework-dev
-Homepage: https://github.com/maemo-leste/qt5-im-him
-XSBC-Bugtracker: https://github.com/maemo-leste/qt5-im-him/issues
-Vcs-Git: https://github.com/maemo-leste/qt5-im-him/
-Vcs-Browser: https://github.com/maemo-leste/qt5-im-him/
+Homepage: https://github.com/maemo-leste/qt-input-maemo
+XSBC-Bugtracker: https://github.com/maemo-leste/qt-input-maemo/issues
+Vcs-Git: https://github.com/maemo-leste/qt-input-maemo/
+Vcs-Browser: https://github.com/maemo-leste/qt-input-maemo/
 
 
-Package: qt5-im-him
+Package: qt-input-maemo
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
     libgtk2.0,
