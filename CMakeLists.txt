@@ -29,10 +29,6 @@ include_directories(${X11_INCLUDE_DIR})
 link_directories(${X11_LIBRARIES})
 
 # global compile defs
-pkg_check_modules(LIBHILDON hildon-1)
-if(DEFINED LIBHILDON_LIBRARIES)
-    add_compile_definitions(MAEMO=1)
-endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(DEBUG=1)
 endif()
@@ -41,7 +37,7 @@ endif()
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Network Svg Xml X11Extras)
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Network Xml X11Extras)
 add_definitions(${QT_DEFINITIONS})
 
 # targets
