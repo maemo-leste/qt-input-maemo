@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 10),
     libx11-dev,
     libqt5x11extras5-dev,
     qtbase5-private-dev,
+    libxcb-xinput-dev,
     libgtk2.0-dev,
     hildon-input-method-framework-dev
 Homepage: https://github.com/maemo-leste/qt-input-maemo
