@@ -32,6 +32,7 @@ target_link_libraries(plugin
         Qt5::Core
         Qt5::Widgets
         Qt5::Gui
+        Qt5::GuiPrivate # for qpa
         Qt5::X11Extras
         ${HIM3_LIBRARIES}
         ${GTK_LIBRARIES}

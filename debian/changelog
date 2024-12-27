@@ -1,3 +1,9 @@
+qt-input-maemo (0.2.2) unstable; urgency=medium
+
+  * link against qtbase5-private-dev
+
+ -- Sander <sander@kroket.io>  Sat, 27 Dec 2024 18:45:00 +0100
+
 qt-input-maemo (0.2.1) unstable; urgency=medium
 
   * Do not link against private Qt5 lib
