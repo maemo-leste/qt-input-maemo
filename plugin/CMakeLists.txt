@@ -35,8 +35,10 @@ target_link_libraries(plugin
         Qt5::X11Extras
         ${HIM3_LIBRARIES}
         ${GTK_LIBRARIES}
+        ${X11_LIBRARIES} ${XCB_LIBRARIES}
 )
 
+target_compile_options(plugin PRIVATE ${XCB_CFLAGS_OTHER})
 
 # install target with dest: /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/
 # find this path with qmake

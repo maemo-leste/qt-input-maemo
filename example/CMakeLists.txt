@@ -68,10 +68,6 @@ target_include_directories(example
 
 add_dependencies(example plugin)
 
-find_package(X11 REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(XCB REQUIRED xcb)
-
 target_compile_options(example PRIVATE ${XCB_CFLAGS_OTHER})
 target_include_directories(example PRIVATE ${X11_INCLUDE_DIR})
 target_link_libraries(example PRIVATE ${X11_LIBRARIES} ${XCB_LIBRARIES})

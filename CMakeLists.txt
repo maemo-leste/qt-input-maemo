@@ -21,9 +21,8 @@ pkg_check_modules(GTK REQUIRED gtk+-2.0)
 pkg_check_modules(HIM3 REQUIRED hildon-input-method-framework-3.0)
 
 find_package(X11 REQUIRED)
-message(STATUS "X11_FOUND = ${X11_FOUND}")
-message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
-message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(XCB REQUIRED xcb)
 
 include_directories(${X11_INCLUDE_DIR})
 link_directories(${X11_LIBRARIES})
