@@ -452,7 +452,7 @@ void QHildonInputContext::setFocusObject(QObject *object) {
   const bool is_input = w->inherits("QLineEdit") || w->inherits("QTextEdit") || w->inherits("QPlainTextEdit");
 
   if (!is_input) {
-    qDebug() << "skipping widget; not input";
+    qDebug() << "skipping widget" << object->objectName() << "; not input";
     return;
   }
 

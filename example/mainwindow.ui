@@ -45,12 +45,16 @@
     <item row="3" column="0">
      <widget class="QLineEdit" name="line">
       <property name="text">
-       <string>Some text</string>
+       <string/>
       </property>
      </widget>
     </item>
     <item row="2" column="0">
-     <widget class="QLineEdit" name="lineEdit"/>
+     <widget class="QLineEdit" name="lineEdit">
+      <property name="text">
+       <string>already has text</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
