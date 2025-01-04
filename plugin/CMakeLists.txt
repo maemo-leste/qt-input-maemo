@@ -33,6 +33,7 @@ target_link_libraries(plugin
         Qt5::Widgets
         Qt5::Gui
         Qt5::X11Extras
+        Qt5::GuiPrivate
         ${HIM3_LIBRARIES}
         ${GTK_LIBRARIES}
         ${X11_LIBRARIES} ${XCB_LIBRARIES}
