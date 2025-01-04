@@ -54,6 +54,14 @@ private:
     HildonIMInternalModifierMask sticky_mask,
     bool was_press_and_release) const;
   void updateInputMethodHints();
+  static bool isWebView(const QWidget* w) {
+    const QString name = w->metaObject()->className();
+    return name == "QtWebEngineCore::RenderWidgetHostViewQtDelegateWidget";
+  }
+  static bool isQuickView(const QWidget* w) {
+    const QString name = w->metaObject()->className();
+    return name == "QQuickWidget";
+  }
 private:
   static void sendKey(QWidget *keywidget, int qtCode);
   static bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
@@ -63,6 +71,7 @@ private:
   QHildonEventFilter *m_eventFilter;
   int m_inputMode = 0;
   QWidget* m_currentFocus = nullptr;
+  QWidget* m_lastFocus = nullptr;
   QWidget* m_lastKeyWidget = nullptr;
   QString m_lastCommitString;
   bool m_lastInternalChange;

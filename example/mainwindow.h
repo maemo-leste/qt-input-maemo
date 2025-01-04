@@ -6,9 +6,14 @@
 #include <QCompleter>
 #include <QPushButton>
 #include <QClipboard>
+// #include <QtWebEngineCore>
+// #include <QWebEngineView>
+#include <QQuickWidget>
+#include <QQmlContext>
 #include <QStringListModel>
 #include <QTimer>
 #include <QDebug>
+#include <QUrl>
 #include <QQueue>
 #include <QThread>
 #include <QMutex>
@@ -23,6 +28,8 @@ class MainWindow : public QMainWindow
 
 public:
   explicit MainWindow(QWidget *parent = nullptr);
+  void appendQuickView();
+  void appendWebView();
   ~MainWindow() override;
 
   //QHildonInputContext* plugin = nullptr;
@@ -32,4 +39,9 @@ public slots:
 
 private:
   Ui::MainWindow *ui;
+  QTimer* m_timer;
+
+  QQuickWidget* m_view;
+  //QWebEngineView* m_view;
+
 };

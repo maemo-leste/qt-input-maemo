@@ -1,9 +1,9 @@
 #include <QGuiApplication>
 #include <QObject>
 #include <QWidget>
+#include <qmetaobject.h>
 
 #include "input_context.h"
-// #include "xcb/xcb.h"
 
 #include "utils-hildon.h"
 #include "utils-xcb.h"
@@ -241,9 +241,9 @@ void QHildonInputContext::clearSelection() const {
 
   //Move the cursor backward if the text has been selected from right to left
   if (textCursorPos < m_textCursorPosOnPress){
-    QInputMethodEvent e;
-    e.setCommitString(QString(), -selection.length(),0);
-    QApplication::sendEvent(w, &e);
+    QInputMethodEvent _e;
+    _e.setCommitString(QString(), -selection.length(),0);
+    QApplication::sendEvent(w, &_e);
   }
 }
 
@@ -359,6 +359,26 @@ void QHildonInputContext::insertUtf8(int flag, const QString &text) {
     // Reset commit mode
     if (flag == HILDON_IM_MSG_END)
       setCommitMode(m_lastCommitMode, false);
+  } else if (isWebView(w)) {
+    const QKeySequence keySeq = QKeySequence::fromString(text, QKeySequence::PortableText);
+    Qt::Key key;
+    if (!keySeq.isEmpty()) {
+      int keyInt = keySeq[0]; // QKeySequence holds key codes as integers
+      key = static_cast<Qt::Key>(keyInt);
+    } else {
+      qWarning() << "QWebEngineCore: sending invalid key" << text;
+      key = Qt::Key_unknown;
+    }
+
+    auto mod = Qt::NoModifier;
+    if (m_mask & HILDON_IM_SHIFT_LOCK_MASK)
+      mod = Qt::ShiftModifier;
+
+    auto pressEvent = QKeyEvent(QEvent::KeyPress, key, mod, cleanText);
+    auto releaseEvent = QKeyEvent(QEvent::KeyRelease, key, mod);
+
+    QApplication::sendEvent(w, &pressEvent);
+    QApplication::sendEvent(w, &releaseEvent);
   } else { // commitMode != HILDON_IM_COMMIT_PREEDIT
     QInputMethodEvent e;
     e.setCommitString(cleanText);
@@ -449,10 +469,14 @@ void QHildonInputContext::setFocusObject(QObject *object) {
     return;
   }
 
-  const bool is_input = w->inherits("QLineEdit") || w->inherits("QTextEdit") || w->inherits("QPlainTextEdit");
+  const bool is_quickview = isQuickView(w);
+  const bool is_input = w->inherits("QLineEdit") || w->inherits("QTextEdit") || w->inherits("QPlainTextEdit") || isWebView(w);
+  QString object_name = object->objectName();
+  if (object_name.isEmpty())
+    object_name = object->metaObject()->className();
 
   if (!is_input) {
-    qDebug() << "skipping widget" << object->objectName() << "; not input";
+    qDebug() << "skipping widget" << object_name << "; not input";
     return;
   }
 
@@ -460,7 +484,7 @@ void QHildonInputContext::setFocusObject(QObject *object) {
   // it is also activated, which essentially steals our focus.
   // The same happens for the symbol picker.
   // This is a bug in the HIM, that we try to work around here.
-  qDebug() << "Focus set on object:" << object->objectName();
+  qDebug() << "Focus set on object:" << object_name;
   m_currentFocus = w;
 
   // Workaround for the GraphicsView.
@@ -590,6 +614,7 @@ void QHildonInputContext::sendSurrounding(bool sendAllContents) {
 // }
 
 void QHildonInputContext::showInputPanel() {
+  qDebug() << "QHildonInputContext::showInputPanel";
   if (!m_currentFocus)
     return;
 

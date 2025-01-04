@@ -3,9 +3,12 @@ file(GLOB SOURCE_FILES
         "*.cpp"
 )
 
+qt5_add_resources(QT_RESOURCES assets.qrc)
+
 add_executable(example main.cpp
         ${SOURCE_FILES}
         ${RESOURCES}
+        ${QT_RESOURCES}
 )
 
 # generate globals.h (path to custom Qt plugins dir)
@@ -46,6 +49,7 @@ target_compile_definitions(example
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
 
+find_package(Qt5 REQUIRED COMPONENTS QuickWidgets Qml)
 target_link_libraries(example PUBLIC
         ${CMAKE_DL_LIBS}
         Qt5::Core
@@ -54,6 +58,8 @@ target_link_libraries(example PUBLIC
         Qt5::X11Extras
         Qt5::Network
         Qt5::Xml
+        Qt5::Qml
+        Qt5::QuickWidgets
 )
 
 target_compile_definitions(example
