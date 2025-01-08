@@ -160,7 +160,10 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
         return true;
 
       case HILDON_IM_CONTEXT_WIDGET_CHANGED:
-      case HILDON_IM_CONTEXT_ENTER_ON_FOCUS:
+      case HILDON_IM_CONTEXT_ENTER_ON_FOCUS: {
+        sendKey(m_currentFocus, Qt::Key_Enter);
+        return true;
+      }
       case HILDON_IM_CONTEXT_SHIFT_LOCKED:
       case HILDON_IM_CONTEXT_SHIFT_UNLOCKED:
       case HILDON_IM_CONTEXT_LEVEL_LOCKED:

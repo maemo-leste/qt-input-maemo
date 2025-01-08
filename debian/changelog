@@ -1,3 +1,9 @@
+qt-input-maemo (0.2.6) unstable; urgency=medium
+
+  * input_context: Support HILDON_IM_CONTEXT_ENTER_ON_FOCUS
+
+ -- Sander <sander@kroket.io>  Wed, 07 Jan 2024 17:01:00 +0100
+
 qt-input-maemo (0.2.4) unstable; urgency=medium
 
   * link against xcb, libxcb-xinput-dev, qtbase5-private-dev
