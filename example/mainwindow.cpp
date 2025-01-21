@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent) :
   ui->setupUi(this);
 
   // ui->line->setInputMethodHints(Qt::ImhDigitsOnly);
-  this->appendQuickView();
+  // this->appendQuickView();
 
   this->show();
 }
