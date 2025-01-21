@@ -452,13 +452,9 @@ void QHildonInputContext::updateInputMethodHints() {
       m_inputMode |= HILDON_GTK_INPUT_MODE_DICTIONARY;
   }
 
-  // @TODO: multi-line support
-  // QWidget *multi = realFocus ? realFocus.data() : QInputContext::focusWidget();
-  // if (multi)
-  //     m_inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
-  // }
-
-  // @TODO: pretty print inputMode
+  if(hints & Qt::ImhMultiLine) {
+    m_inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
+  }
 
 #ifdef DEBUG
   printf("updateInputMethodHints: mapped hint: 0x%x to mode: 0x%x\n", static_cast<int>(hints), m_inputMode);
