@@ -20,9 +20,6 @@ bool QHildonEventFilter::nativeEventFilter(const QByteArray &eventType, void *me
         if (const xcb_atom_t atom = event_message->type; HILDON_ATOM_MAP.contains(atom)) {
           return this->ctx->parseHildonCommand(event_message);
         }
-
-        printf("unrelated ClientMessage received, type: %u\n", event_message->type);
-        fflush(stdout);
         break;
       }
       default:;
