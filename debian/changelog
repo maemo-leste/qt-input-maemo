@@ -1,3 +1,9 @@
+qt-input-maemo (0.2.9) unstable; urgency=medium
+
+  * xcb: exit early when app window does not exist anymore, or the XCB connection is invalid
+
+ -- Sander <sander@kroket.io>  Wed, 31 Jan 2024 18:44:00 +0100
+
 qt-input-maemo (0.2.8) unstable; urgency=medium
 
   * event_filter: remove debug print for unrelated XCB client messages

@@ -10,6 +10,16 @@ namespace QXcb {
     xcb_window_t result = 0;
     const auto root_window = static_cast<xcb_window_t>(QX11Info::appRootWindow(-1));
 
+    // still have app window?
+    if (root_window == 0)
+      return result;
+
+    // still have a valid XCB connection?
+    if (CONNECTION == nullptr || xcb_connection_has_error(CONNECTION)) {
+      qWarning("Failed to connect to X server");
+      return result;
+    }
+
     const xcb_get_property_cookie_t prop_cookie = xcb_get_property(
         CONNECTION, 0, root_window, hildon_atom(HILDON_IM_WINDOW).xcb_atom, XCB_GET_PROPERTY_TYPE_ANY, 0, 1);
     xcb_get_property_reply_t *prop_reply = xcb_get_property_reply(CONNECTION, prop_cookie, nullptr);
