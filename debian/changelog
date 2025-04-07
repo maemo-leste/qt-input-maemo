@@ -1,3 +1,9 @@
+qt-input-maemo (0.3.0) unstable; urgency=medium
+
+  * input_context: fix switch case for HILDON_IM_CONTEXT_WIDGET_CHANGED
+
+ -- Sander <sander@kroket.io>  Mon, 7 Apr 2025 12:30:00 +0300
+
 qt-input-maemo (0.2.9) unstable; urgency=medium
 
   * xcb: exit early when app window does not exist anymore, or the XCB connection is invalid

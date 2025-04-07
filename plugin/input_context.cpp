@@ -159,7 +159,9 @@ bool QHildonInputContext::parseHildonCommand(xcb_client_message_event_t *event) 
         m_spaceAfterCommit = (msg->type == HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT);
         return true;
 
-      case HILDON_IM_CONTEXT_WIDGET_CHANGED:
+      case HILDON_IM_CONTEXT_WIDGET_CHANGED: {
+        return true;
+      }
       case HILDON_IM_CONTEXT_ENTER_ON_FOCUS: {
         sendKey(m_currentFocus, Qt::Key_Enter);
         return true;
